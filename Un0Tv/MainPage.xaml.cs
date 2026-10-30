@@ -4,9 +4,17 @@ public partial class MainPage : ContentPage
 {
     private const string SiteUrl = "https://secondframe.netlify.app/";
 
+    // Whether the switch at startup starts on. The switch itself is remembered
+    // on the TV after the first choice.
+    private const string BlockerPref = "blocker_enabled";
+
     private readonly Stack<string> _history = new();
     private string? _currentUrl;
     private bool _siteStarted;
+
+    // True when the ad blocker is switched on. Read by the browser filter
+    // through IsBlockerOn, so flipping the switch takes effect at once.
+    private static bool _blockerOn = true;
 
     // The screen lives inside a Shell, so the activity cannot reach it by
     // walking Windows[0].Page. This gives it a direct handle instead.
@@ -17,10 +25,22 @@ public partial class MainPage : ContentPage
     // to a page that has not been loaded yet.
     public bool IsGateVisible => AdGate.IsVisible;
 
+    // Asked for every request by RequestFilter: should this be filtered?
+    public static bool IsBlockerOn => _blockerOn;
+
     public MainPage()
     {
         InitializeComponent();
         Instance = this;
+
+        try
+        {
+            _blockerOn = Preferences.Get(BlockerPref, true);
+        }
+        catch
+        {
+            _blockerOn = true;
+        }
     }
 
     protected override void OnAppearing()
@@ -42,44 +62,61 @@ public partial class MainPage : ContentPage
     }
 
     // ---------------------------------------------------------------
-    // Startup check for the TV's own ad filter
+    // Startup check: the ad blocker switch
     // ---------------------------------------------------------------
 
-    // Android does not let one app switch another app's filter on, so the most
-    // this check can do is make sure the filter is installed and allowed to
-    // run, and take you straight to the right screen when it is not. The site
-    // only opens once both are true, or once you choose to carry on without it.
-    private void CheckFilter()
+    // The block list is part of the app, so there is nothing to install and no
+    // permission to grant any more. This only shows the switch, and loads the
+    // list from disk on every start so the filter is ready before the site.
+    private async void CheckFilter()
     {
         if (_siteStarted)
             return;
 
-#if ANDROID
-        var installed = BlockerGate.IsInstalled;
-        var allowed = BlockerGate.HasPermission;
+        AdGate.IsVisible = true;
+        GateProgress.IsVisible = false;
+        BtnUpdate.IsVisible = false;
+        RefreshBlockerUi();
 
-        if (installed && allowed)
+        bool loaded = false;
+        try
         {
-            StartSite();
-            return;
+            loaded = await Hagezi.LoadAsync();
+        }
+        catch { }
+
+        if (loaded)
+        {
+            GateStatus.Text = $"{Hagezi.Count:N0} ad, tracker and malware domains ready.";
+            GateHint.Text = "Saved on this TV, so it starts instantly. Use “Update the list” now and then to refresh it.";
+        }
+        else
+        {
+            // First start, or the saved list was cleared: offer the download
+            // instead of sitting on an empty blocker.
+            GateStatus.Text = "The block list has not been downloaded yet.";
+            GateHint.Text = "Press the switch to download it once. It is about 30 MB and is kept on this TV afterwards.";
         }
 
-        AdGate.IsVisible = true;
-        BtnInstall.IsVisible = !installed;
-        BtnAllow.IsVisible = installed && !allowed;
+        BtnUpdate.IsVisible = loaded;
+        FocusFirstGateButton(BtnBlocker);
+    }
 
-        GateStatus.Text = installed
-            ? "The ad filter is installed. Open it and switch its ad and tracker filter on."
-            : "Un0Tv works best with the free DNS ad blocker (Repel) installed, so adverts are filtered on this TV.";
-
-        GateHint.Text = installed
-            ? "Press “Check again” once the switch is on. You can also carry on without it."
-            : "Press “Install ad filter” to open Google Play, then come back here.";
-
-        FocusFirstGateButton(installed ? BtnAllow : BtnInstall);
-#else
-        StartSite();
-#endif
+    // Draws the switch in whichever state it is in, and says what that means.
+    private void RefreshBlockerUi()
+    {
+        if (_blockerOn)
+        {
+            BtnBlocker.Text = "AD BLOCKER: ON";
+            BtnBlocker.BackgroundColor = Color.FromArgb("#1E8E3E");
+            BtnBlocker.TextColor = Colors.White;
+        }
+        else
+        {
+            BtnBlocker.Text = "AD BLOCKER: OFF";
+            BtnBlocker.BackgroundColor = Color.FromArgb("#4A4A5A");
+            BtnBlocker.TextColor = Color.FromArgb("#E8E8F0");
+        }
     }
 
     private void FocusFirstGateButton(VisualElement target)
@@ -91,31 +128,141 @@ public partial class MainPage : ContentPage
         });
     }
 
-    private void OnInstallClicked(object? sender, EventArgs e)
+    // The switch. Turning it on with no list saved downloads the list first;
+    // turning it off just stops filtering, which takes effect immediately.
+    private async void OnBlockerToggled(object? sender, EventArgs e)
     {
-#if ANDROID
-        BlockerGate.OpenPlayStore();
-#endif
+        if (_busy)
+            return;
+
+        if (_blockerOn)
+        {
+            SetBlocker(false);
+            GateStatus.Text = "Ad blocking is off. Adverts and pop-ups will show.";
+            GateHint.Text = "Press the switch again to turn filtering back on.";
+            return;
+        }
+
+        SetBlocker(true);
+
+        // Turning it on when nothing is saved yet means downloading first.
+        if (!Hagezi.IsLoaded)
+            await DownloadListAsync();
+        else
+            GateStatus.Text = $"{Hagezi.Count:N0} ad, tracker and malware domains ready.";
     }
 
-    private void OnAllowClicked(object? sender, EventArgs e)
+    private void SetBlocker(bool on)
     {
-#if ANDROID
-        // Opens the filter's own screen so its ad and tracker switch can be
-        // turned on. Android will not let this app flip that switch for you.
-        BlockerGate.OpenApp();
-#endif
+        _blockerOn = on;
+        try
+        {
+            Preferences.Set(BlockerPref, on);
+        }
+        catch { }
+
+        RefreshBlockerUi();
     }
 
-    private void OnRecheckClicked(object? sender, EventArgs e) => CheckFilter();
+    // ---------------------------------------------------------------
+    // Downloading the list
+    // ---------------------------------------------------------------
 
-    private void OnSkipClicked(object? sender, EventArgs e) => StartSite();
+    // Set while a download is running, so the buttons cannot start a second
+    // one on top of the first.
+    private bool _busy;
+
+    private async void OnUpdateClicked(object? sender, EventArgs e)
+    {
+        if (_busy)
+            return;
+
+        await DownloadListAsync();
+    }
+
+    private async Task DownloadListAsync()
+    {
+        _busy = true;
+        GateProgress.IsVisible = true;
+        BtnBlocker.IsEnabled = false;
+        BtnStart.IsEnabled = false;
+        BtnUpdate.IsEnabled = false;
+
+        try
+        {
+            var progress = new Progress<string>(m =>
+            {
+                GateStatus.Text = m;
+
+                // Five lists, so the bar creeps along as each one arrives.
+                GateProgress.Progress = Math.Min(0.9, GateProgress.Progress + 0.18);
+            });
+
+            var count = await Hagezi.DownloadAsync(progress);
+
+            GateProgress.Progress = 1;
+            GateStatus.Text = $"{count:N0} ad, tracker and malware domains ready.";
+            GateHint.Text = "Saved on this TV. Filtering is on.";
+            SetBlocker(true);
+            BtnUpdate.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            GateProgress.Progress = 0;
+            GateStatus.Text = "The block list could not be downloaded.";
+            GateHint.Text = ex.Message + " Press the switch to try again.";
+        }
+        finally
+        {
+            _busy = false;
+            GateProgress.IsVisible = false;
+            BtnBlocker.IsEnabled = true;
+            BtnStart.IsEnabled = true;
+            BtnUpdate.IsEnabled = true;
+        }
+    }
+
+    private void OnStartClicked(object? sender, EventArgs e) => StartSite();
 
     private void StartSite()
     {
         _siteStarted = true;
         AdGate.IsVisible = false;
         Browser.Source = SiteUrl;
+    }
+
+    // ---------------------------------------------------------------
+    // Moving between the startup buttons with the remote
+    // ---------------------------------------------------------------
+
+    // The startup screen is native, not a page, so Android decides this by
+    // itself only sometimes. This walks the visible buttons in order, which is
+    // what the remote's arrows need on a TV.
+    internal void MoveGateFocus(int dx, int dy)
+    {
+        if (!AdGate.IsVisible)
+            return;
+
+        var order = new List<Button> { BtnBlocker };
+        if (BtnUpdate.IsVisible) order.Add(BtnUpdate);
+        order.Add(BtnStart);
+
+        var current = order.FindIndex(b => b.IsFocused);
+        if (current < 0)
+        {
+            order[0].Focus();
+            return;
+        }
+
+        // Only up and down matter for a single column; either way the ring
+        // steps one place, which is what a viewer expects.
+        var step = dy > 0 ? 1 : dy < 0 ? -1 : dx > 0 ? 1 : -1;
+        var next = current + step;
+
+        if (next < 0 || next >= order.Count)
+            next = step > 0 ? 0 : order.Count - 1;
+
+        try { order[next].Focus(); } catch { }
     }
 
     // ---------------------------------------------------------------

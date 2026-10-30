@@ -9,14 +9,14 @@
 	<Grid>
 
 		<!-- The site is only started once the startup check below has finished,
-		     so nothing loads behind the gate. -->
+		     so nothing loads behind it. -->
 		<WebView x:Name="Browser"
                  Navigating="OnNavigating"
                  Navigated="OnNavigated" />
 
-		<!-- Startup check: the TV's ad filter should be installed and allowed to
-		     run before the site opens. Shown until both are true, or until you
-		     choose to carry on without it. -->
+		<!-- Startup check. The app carries HaGeZi's block list itself, so the
+		     only question is whether to filter with it. Shown until you choose,
+		     and reachable again before every start. -->
 		<Grid x:Name="AdGate"
               IsVisible="False"
               BackgroundColor="#101014"
@@ -24,68 +24,71 @@
 
 			<VerticalStackLayout VerticalOptions="Center"
                                  HorizontalOptions="Center"
-                                 Spacing="20">
+                                 Spacing="18">
 
-				<Label Text="Before Un0Tv starts"
-                       FontSize="38"
+				<Label Text="Un0Tv"
+                       FontSize="52"
                        FontAttributes="Bold"
                        TextColor="White"
                        HorizontalTextAlignment="Center" />
 
+				<Label Text="Ad blocker"
+                       FontSize="26"
+                       FontAttributes="Bold"
+                       TextColor="#8FA8D8"
+                       HorizontalTextAlignment="Center" />
+
+				<!-- The switch itself: one button whose label and colour show
+				     whether filtering is on. -->
+				<Button x:Name="BtnBlocker"
+                        Clicked="OnBlockerToggled"
+                        FontSize="26"
+                        FontAttributes="Bold"
+                        Padding="44,20"
+                        CornerRadius="12"
+                        HorizontalOptions="Center"
+                        MinimumWidthRequest="380" />
+
 				<Label x:Name="GateStatus"
-                       FontSize="21"
+                       FontSize="20"
                        TextColor="#B8B8CC"
                        HorizontalTextAlignment="Center"
                        MaximumWidthRequest="900" />
 
-				<HorizontalStackLayout HorizontalOptions="Center"
-                                       Spacing="18"
-                                       Margin="0,12,0,0">
-
-					<Button x:Name="BtnInstall"
-                            Text="Install ad filter"
-                            Clicked="OnInstallClicked"
-                            BackgroundColor="#1F6FEB"
-                            TextColor="White"
-                            FontSize="21"
-                            Padding="30,16"
-                            CornerRadius="10" />
-
-					<Button x:Name="BtnAllow"
-                            Text="Allow it to run"
-                            Clicked="OnAllowClicked"
-                            BackgroundColor="#1F6FEB"
-                            TextColor="White"
-                            FontSize="21"
-                            Padding="30,16"
-                            CornerRadius="10" />
-
-					<Button x:Name="BtnRecheck"
-                            Text="Check again"
-                            Clicked="OnRecheckClicked"
-                            BackgroundColor="#2A2A38"
-                            TextColor="White"
-                            FontSize="21"
-                            Padding="30,16"
-                            CornerRadius="10" />
-
-					<Button x:Name="BtnSkip"
-                            Text="Continue anyway"
-                            Clicked="OnSkipClicked"
-                            BackgroundColor="#2A2A38"
-                            TextColor="#C8C8D8"
-                            FontSize="21"
-                            Padding="30,16"
-                            CornerRadius="10" />
-
-				</HorizontalStackLayout>
+				<!-- Downloading shows a moving line; idle keeps it empty so the
+				     layout does not jump. -->
+				<ProgressBar x:Name="GateProgress"
+                             IsVisible="False"
+                             ProgressColor="#1F6FEB"
+                             WidthRequest="620"
+                             HeightRequest="6" />
 
 				<Label x:Name="GateHint"
-                       FontSize="17"
+                       FontSize="16"
                        TextColor="#7A7A90"
                        HorizontalTextAlignment="Center"
-                       MaximumWidthRequest="900"
-                       Margin="0,10,0,0" />
+                       MaximumWidthRequest="900" />
+
+				<Button x:Name="BtnStart"
+                        Text="Start watching"
+                        Clicked="OnStartClicked"
+                        BackgroundColor="#1F6FEB"
+                        TextColor="White"
+                        FontSize="23"
+                        Padding="40,18"
+                        CornerRadius="12"
+                        HorizontalOptions="Center"
+                        Margin="0,14,0,0" />
+
+				<Button x:Name="BtnUpdate"
+                        Text="Update the list"
+                        Clicked="OnUpdateClicked"
+                        BackgroundColor="#2A2A38"
+                        TextColor="#C8C8D8"
+                        FontSize="18"
+                        Padding="22,12"
+                        CornerRadius="10"
+                        HorizontalOptions="Center" />
 
 			</VerticalStackLayout>
 		</Grid>

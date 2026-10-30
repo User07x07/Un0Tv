@@ -9,6 +9,10 @@ namespace Un0Tv;
 // The app's own filter, doing the job a TV-wide blocker such as Repel does,
 // but inside this one app and without a VPN.
 //
+// It blocks from two places: a short list built into the app, and HaGeZi's
+// Multi PRO list (about 214,000 domains) once the startup check has downloaded
+// it. See Hagezi.cs.
+//
 // It runs twice for every request the page or a movie player makes:
 //
 //   Decide(url)  - is this request an advert, a tracker or malware host?
@@ -163,7 +167,19 @@ internal static class RequestFilter
         if (host == "localhost" || host.StartsWith("[") || IsIp(host))
             return false;
 
-        return Matches(host, BlockedHosts);
+        // The switch at startup: off means nothing is filtered at all.
+        if (!MainPage.IsBlockerOn)
+            return false;
+
+        // The short list built into the app, which works even before the big
+        // public list has been downloaded.
+        if (Matches(host, BlockedHosts))
+            return true;
+
+        // HaGeZi's Multi PRO list, about 214,000 domains. Empty until the
+        // startup check has downloaded it, in which case this answers false
+        // and only the short list above applies.
+        return Hagezi.Blocks(host);
     }
 
     // True when "host" is exactly one of the names, or a subdomain of it.

@@ -59,10 +59,30 @@ public class MainActivity : MauiAppCompatActivity
             return base.DispatchKeyEvent(e);
 
         // The startup check is on screen and the site has not loaded yet, so
-        // there is no page to drive. Hand the keys to Android, which moves
-        // between the check's buttons in the normal TV way.
+        // there is no page to drive. The arrows move between the check's own
+        // buttons; every other key is left to Android, which presses whichever
+        // button the ring is on.
         if (Page?.IsGateVisible == true)
+        {
+            if (e is not null && e.Action == KeyEventActions.Down)
+            {
+                switch (e.KeyCode)
+                {
+                    case AndroidKeycode.DpadUp:
+                    case AndroidKeycode.DpadDown:
+                    case AndroidKeycode.DpadLeft:
+                    case AndroidKeycode.DpadRight:
+                        var gx = e.KeyCode == AndroidKeycode.DpadLeft ? -1
+                               : e.KeyCode == AndroidKeycode.DpadRight ? 1 : 0;
+                        var gy = e.KeyCode == AndroidKeycode.DpadUp ? -1
+                               : e.KeyCode == AndroidKeycode.DpadDown ? 1 : 0;
+                        Page.MoveGateFocus(gx, gy);
+                        return true;
+                }
+            }
+
             return base.DispatchKeyEvent(e);
+        }
 
         // A movie filling the screen: its own player controls own the arrows.
         // Back still has to leave fullscreen, so that one key is handled below.

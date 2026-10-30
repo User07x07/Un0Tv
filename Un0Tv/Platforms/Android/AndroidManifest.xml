@@ -13,10 +13,9 @@
 		android:required="false" />
 
 	<!-- Android 11 and newer hide the list of installed apps from us unless the
-	     packages we ask about are declared here. Without this the startup gate
-	     would think the ad filter is missing even after it is installed. -->
+	     packages we ask about are declared here. Google Play is declared so the
+	     app can open a store page if it ever needs to. -->
 	<queries>
-		<package android:name="app.llcloud.repel" />
 		<package android:name="com.android.vending" />
 	</queries>
 

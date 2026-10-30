@@ -5,11 +5,15 @@
 Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. The site itself was built for phones: it expects swipes, has no TV navigation, and serves its films through third-party players covered in adverts. Un0Tv bridges that gap on the TV side, inside one app and without a VPN.
 
 <p align="center">
+  <img alt="version" src="https://img.shields.io/badge/version-1.2.0-blueviolet?style=flat-square" />
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%20TV%20%7C%20Google%20TV-3DDC84?style=flat-square" />
   <img alt="dotnet" src="https://img.shields.io/badge/_.NET-MAUI%20%C2%B7%20net10.0--android-512BD4?style=flat-square" />
   <img alt="min sdk" src="https://img.shields.io/badge/min%20Android-5.0%20(API%2021)-0A84FF?style=flat-square" />
   <img alt="arch" src="https://img.shields.io/badge/ABI-arm64--v8a%20%C2%B7%20armeabi--v7a%20%C2%B7%20x86-lightgrey?style=flat-square" />
+  <img alt="tested on" src="https://img.shields.io/badge/tested%20on-Sony%20Android%20TV-00A8E1?style=flat-square" />
 </p>
+
+> **Tested on a Sony Android TV.** The builds described here were installed and run on a real Sony Android TV — the TV launcher entry, the startup gate, the D-pad highlight, the ad filtering and playback all work there.
 
 ---
 
@@ -35,9 +39,9 @@ Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. Th
 |---|---|
 | **TV launcher** | Declares `LEANBACK_LAUNCHER` and ships a TV banner, so Un0Tv appears on the Android TV home screen, not just in the apps list. |
 | **Always landscape** | The activity is locked to landscape with the light bar hidden and the screen kept awake. |
-| **Startup ad-filter check** | Before the site opens, the app checks that the TV's own filter app is installed and allowed to run, then takes you straight to the right screen if it is not. |
+| **Startup blocker switch** | Before the site opens, a screen shows the built-in ad blocker with an on/off switch. The switch remembers your choice and filtering takes effect immediately. |
 | **D-pad navigation** | The remote's arrows move a moving highlight over the site's clickable items; the centre button presses the highlighted one. |
-| **Advert filtering** | Two independent layers: a host filter on every network request, and an in-page cleaner that runs inside every frame, including the movie player's own. |
+| **Advert filtering** | Three layers: HaGeZi's Multi PRO list (~214,000 domains) plus a built-in host list on every network request, and an in-page cleaner that runs inside every frame, including the movie player's own. |
 | **Pop-up policy** | The movie player's "can I open a pop-up?" check passes silently, while advert windows are refused and sign-in windows are allowed. |
 | **Auto play** | Landing on a watch page presses the site's own play control, then lifts the mute so the film starts with sound. |
 | **Back button** | Leaves fullscreen, closes a sign-in window, or steps one page back inside the site, before it ever closes the app. |
@@ -48,15 +52,16 @@ Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. Th
 
 ```mermaid
 flowchart TD
-    A("MainActivity<br/>remote keys, fullscreen") --> B("MainPage<br/>one WebView + the gate")
-    B --> C{"Ad filter<br/>installed and allowed?"}
-    C -->|"No"| D("Startup gate<br/>install / allow / skip")
-    C -->|"Yes"| E("Site loads")
-    E --> F("RequestFilter<br/>blocks ad hosts first")
+    A("MainActivity<br/>remote keys, fullscreen") --> B("MainPage<br/>one WebView + the blocker switch")
+    B --> C{"Blocker switched on?"}
+    C -->|"Off"| E("Site loads, unfiltered")
+    C -->|"On"| F("RequestFilter<br/>HaGeZi + built-in list")
+    C -->|"No list saved yet"| D("Download once<br/>~30 MB, kept on the TV")
+    D --> F
+    F --> E
     E --> G("AdCleanupScript<br/>in every frame")
     E --> H("DpadNav<br/>moves the highlight")
-    F --> I("Clean playback")
-    G --> I
+    G --> I("Clean playback")
     H --> I
 ```
 
@@ -70,12 +75,29 @@ Adverts reach a streaming page through four different doors. Un0Tv closes them s
 
 ### 1. Advert hosts at the network level
 
-`RequestFilter.cs` sits in front of every request the page **or a movie player** makes, and answers blocked hosts with an empty reply so the script never arrives. Roughly 300 host names are listed, covering ad exchanges, pop-unders, trackers, fingerprinting, coin-miners and fake "your device is infected" pages.
+`RequestFilter.cs` sits in front of every request the page **or a movie player** makes, and answers blocked hosts with an empty reply so the script never arrives. It matches against two lists:
+
+- **HaGeZi's Multi PRO** — about **214,000** advert, tracker, phishing and malware domains. Downloaded once (around 30 MB) and kept on the TV, so later starts load it from disk in a second.
+- **A built-in short list** — around 300 host names covering the worst ad exchanges, pop-unders and fake "your device is infected" pages. This one works even before anything is downloaded.
 
 Two rules keep it safe:
 
 - **A keep list always wins.** The site, its sign-in, the movie players and their video hosts are never blocked.
-- **Whole host names only, never plain words.** `adserver.com` is blocked; a film titled *Shadow* is not.
+- **Whole host names only, never plain words.** `adserver.com` is blocked; a film titled *Shadow* is not. A subdomain such as `a.b.adsite.com` is caught by an entry for `adsite.com`, which is how the wildcard list is meant to work.
+
+The startup screen has one switch. **Off** means nothing is filtered at all — handy if a film refuses to start and you want to rule the blocker out. **On** is the normal setting.
+
+The five published HaGeZi files all carry the same domains in different formats, and the app merges all five:
+
+| File | Line format |
+|---|---|
+| [`adblock/pro.txt`](https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt) | `\|\|adsite.com^` |
+| [`dnsmasq/pro.txt`](https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/dnsmasq/pro.txt) | `local=/adsite.com/` |
+| [`wildcard/pro.txt`](https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/pro.txt) | `*.adsite.com` |
+| [`wildcard/pro-onlydomains.txt`](https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/pro-onlydomains.txt) | `adsite.com` |
+| [`rpz/pro.txt`](https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/rpz/pro.txt) | `adsite.com CNAME .` |
+
+`Hagezi.cs` reads every line format, keeps only real host names, and saves the merged result as one plain domain per line. One list failing to download does not lose the other four.
 
 ### 2. Advert windows
 
@@ -97,18 +119,18 @@ Browsers only allow a video to start by itself while it is muted, so the player 
 
 ```
 Un0Tv/
-├── MainPage.xaml / .xaml.cs        One page: the browser plus the startup gate
+├── MainPage.xaml / .xaml.cs        One page: the browser plus the blocker switch
 ├── PageScripts.cs                  Auto play script injected after each load
 ├── DpadNav.cs                      The moving highlight and its arrow logic
+├── Hagezi.cs                       The big block list: download, parse, match
 ├── version.json                    Base version for Nerdbank.GitVersioning
 └── Platforms/Android/
     ├── MainActivity.cs             Remote keys, fullscreen, Back, keyboard detection
-    ├── AndroidManifest.xml         TV features, banner, package queries
-    ├── BlockerGate.cs              Is the TV ad filter installed and allowed?
+    ├── AndroidManifest.xml         TV features and banner
     ├── TvWebView.cs                Native view setup, pop-up window, fullscreen
     ├── TvChromeClient.cs           Pop-up routing, fullscreen callbacks
     ├── TvWebViewClient.cs          Request hook for the filter
-    ├── RequestFilter.cs            Host block list and keep list
+    ├── RequestFilter.cs            Keep list, short block list, the switch check
     ├── PopupGuard.cs               Which pop-up windows are allowed
     ├── AdCleanupScript.cs          In-frame advert cleaner
     └── AudioAutoplay.cs            Sound-on autoplay inside the player
@@ -124,6 +146,7 @@ Un0Tv/
 | Android SDK | API 36 build tools, platform `android-36` |
 | JDK | 17 |
 | Target device | Android TV or Google TV, Android 5.0 (API 21) or newer |
+| Tested on | **Sony Android TV** |
 
 > Samsung (Tizen) and LG (webOS) televisions cannot run this app. It needs Android underneath.
 
@@ -221,14 +244,16 @@ The startup gate uses Android's own focus movement, so the D-pad works there in 
 
 ## Versioning
 
-`version.json` holds the base version (`1.0`), and `Nerdbank.GitVersioning` reads the git history to expand it into a real build number. Android needs two numbers, and both must climb on every install or the TV treats the new file as the same old app:
+Current version: **1.2.0** (Android version code **3**).
 
-| Android setting | What it means |
-|---|---|
-| `ApplicationDisplayVersion` | The version you see, for example `1.0.8` |
-| `ApplicationVersion` | A whole number that must increase on every install |
+`version.json` holds the base version (`1.1`), and `Nerdbank.GitVersioning` is installed to expand it from git history. Android needs two numbers, and both must climb on every install or the TV treats the new file as the same old app and refuses to update it:
 
-> **Status:** the package is installed and `version.json` exists, but the two numbers in `Un0Tv.csproj` are still hand-typed (`1.0` and `1`). They are not yet driven by the package, so bump them by hand until that wiring is finished.
+| Android setting | What it means | Current value |
+|---|---|---|
+| `ApplicationDisplayVersion` | The version you see, for example `1.2.0` | `1.2.0` |
+| `ApplicationVersion` | A whole number that must increase on every install | `2` |
+
+> **Status:** the two numbers in `Un0Tv.csproj` are still hand-typed rather than driven by the versioning package. **Bump `ApplicationVersion` by one for every APK you install** — a repeat number is the usual reason a TV refuses an update.
 
 ---
 
@@ -242,4 +267,4 @@ The startup gate uses Android's own focus movement, so the D-pad works there in 
 
 ---
 
-<p align="center"><sub>Un0Tv · built for a remote, not a thumb</sub></p>
+<p align="center"><sub>Un0Tv 1.2.0 · built for a remote, not a thumb · tested on Sony Android TV</sub></p>
