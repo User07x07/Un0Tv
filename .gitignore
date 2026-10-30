@@ -361,3 +361,10 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Large backup archives - keep on disk, never in git
+*.7z
+*.zip
+
+# Local tool artifacts (screenshots, attachments, chat history)
+.hormachuelos/
