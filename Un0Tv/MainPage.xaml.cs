@@ -1,32 +1,48 @@
+using System.Collections.ObjectModel;
+using Microsoft.Maui.Dispatching;
+
 namespace Un0Tv;
 
 public partial class MainPage : ContentPage
 {
     private const string SiteUrl = "https://secondframe.netlify.app/";
 
-    // Whether the switch at startup starts on. The switch itself is remembered
-    // on the TV after the first choice.
-    private const string BlockerPref = "blocker_enabled";
+    // What the switches were set to last time. Kept on the TV so a viewer does
+    // not have to set them again on every start.
+    private const string FilterPref = "blocker_enabled";
+    private const string RowsPref = "activity_blocked_only";
 
     private readonly Stack<string> _history = new();
     private string? _currentUrl;
     private bool _siteStarted;
 
-    // True when the ad blocker is switched on. Read by the browser filter
+    // True when the filter layer is switched on. Read by the browser filter
     // through IsBlockerOn, so flipping the switch takes effect at once.
-    private static bool _blockerOn = true;
+    private static bool _filterOn = true;
+
+    // Which rows the Activity list shows: everything, or only what was refused.
+    private bool _blockedOnly;
+
+    // What the Activity list draws. Kept separate from the full log so the All /
+    // Blocked tab can hide rows without losing them, and updated in place so the
+    // list does not flicker once a second.
+    private readonly ObservableCollection<LogEntry> _visibleRows = new();
+
+    // The heartbeat that keeps the figures and the "seconds ago" text honest
+    // while the home screen or the Activity list is open.
+    private IDispatcherTimer? _beat;
 
     // The screen lives inside a Shell, so the activity cannot reach it by
     // walking Windows[0].Page. This gives it a direct handle instead.
     public static MainPage? Instance { get; private set; }
 
-    // True while the startup check is on screen, so the activity leaves the
-    // remote's keys to Android's own focus movement instead of sending them
-    // to a page that has not been loaded yet.
-    public bool IsGateVisible => AdGate.IsVisible;
+    // True while a screen of ours is over the site, so the activity leaves the
+    // remote's keys to our own focus movement instead of sending them to a page
+    // that has not loaded.
+    public bool IsGateVisible => HomePanel.IsVisible || ActivityPanel.IsVisible;
 
     // Asked for every request by RequestFilter: should this be filtered?
-    public static bool IsBlockerOn => _blockerOn;
+    public static bool IsBlockerOn => _filterOn;
 
     public MainPage()
     {
@@ -35,18 +51,29 @@ public partial class MainPage : ContentPage
 
         try
         {
-            _blockerOn = Preferences.Get(BlockerPref, true);
+            _filterOn = Preferences.Get(FilterPref, true);
+            _blockedOnly = Preferences.Get(RowsPref, false);
+            AdStats.Load();
         }
         catch
         {
-            _blockerOn = true;
+            _filterOn = true;
         }
+
+        ActivityList.ItemsSource = _visibleRows;
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        CheckFilter();
+        ShowHome();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        AdStats.Save();
+        StopBeat();
     }
 
     protected override void OnHandlerChanged()
@@ -62,21 +89,22 @@ public partial class MainPage : ContentPage
     }
 
     // ---------------------------------------------------------------
-    // Startup check: the ad blocker switch
+    // The home screen
     // ---------------------------------------------------------------
 
-    // The block list is part of the app, so there is nothing to install and no
-    // permission to grant any more. This only shows the switch, and loads the
-    // list from disk on every start so the filter is ready before the site.
-    private async void CheckFilter()
+    // Shows the protection screen and loads the saved block list, so the filter
+    // is ready before the site asks for anything.
+    private async void ShowHome()
     {
         if (_siteStarted)
             return;
 
-        AdGate.IsVisible = true;
-        GateProgress.IsVisible = false;
-        BtnUpdate.IsVisible = false;
-        RefreshBlockerUi();
+        ActivityPanel.IsVisible = false;
+        HomePanel.IsVisible = true;
+        ListProgress.IsVisible = false;
+        DrawLayers();
+
+        StartBeat();
 
         bool loaded = false;
         try
@@ -85,41 +113,125 @@ public partial class MainPage : ContentPage
         }
         catch { }
 
-        if (loaded)
-        {
-            GateStatus.Text = $"{Hagezi.Count:N0} ad, tracker and malware domains ready.";
-            GateHint.Text = "Saved on this TV, so it starts instantly. Use “Update the list” now and then to refresh it.";
-        }
-        else
-        {
-            // First start, or the saved list was cleared: offer the download
-            // instead of sitting on an empty blocker.
-            GateStatus.Text = "The block list has not been downloaded yet.";
-            GateHint.Text = "Press the switch to download it once. It is about 30 MB and is kept on this TV afterwards.";
-        }
-
-        BtnUpdate.IsVisible = loaded;
-        FocusFirstGateButton(BtnBlocker);
+        DrawLayers(loaded);
+        FocusFirst(BtnFilter);
     }
 
-    // Draws the switch in whichever state it is in, and says what that means.
-    private void RefreshBlockerUi()
+    // Draws the shield, the figures and the three layer rows from the real
+    // state of the app - nothing here is a decoration.
+    private void DrawLayers(bool? loadedOverride = null)
     {
-        if (_blockerOn)
+        var listOn = loadedOverride ?? Hagezi.IsLoaded;
+
+        // ---- The shield ----
+        var protectedNow = _filterOn;
+
+        ShieldGlyph.Text = protectedNow ? "\u2713" : "\u2715";
+        ShieldGlyph.TextColor = Color.FromArgb(protectedNow ? "#4CD07D" : "#F0736A");
+        ShieldRing.Stroke = Color.FromArgb(protectedNow ? "#255C3A" : "#5C2525");
+        ShieldState.Text = protectedNow ? "Protected" : "Not protected";
+        ShieldState.TextColor = Color.FromArgb(protectedNow ? "#FFFFFF" : "#F0736A");
+
+        var layersOn = (protectedNow ? 1 : 0) + (listOn ? 1 : 0) + 1;
+        LayerCount.Text = $"{layersOn} of 3 layers on";
+
+        // ---- The figures ----
+        BlockedToday.Text = AdStats.BlockedToday.ToString("N0");
+        ChecksToday.Text = AdStats.ChecksToday == 0
+            ? "No lookups yet"
+            : $"{AdStats.ChecksToday:N0} lookups checked";
+
+        // ---- Layer 1: the filter ----
+        BtnFilter.Text = _filterOn ? "ON" : "OFF";
+        BtnFilter.BackgroundColor = Color.FromArgb(_filterOn ? "#4CD07D" : "#3A3A4E");
+        BtnFilter.TextColor = Color.FromArgb(_filterOn ? "#08210F" : "#C9C9DE");
+        LayerFilterInfo.Text = _filterOn
+            ? "Every request checked before it loads"
+            : "Off - adverts and pop-ups will show";
+
+        // ---- Layer 2: the public list ----
+        if (listOn)
         {
-            BtnBlocker.Text = "AD BLOCKER: ON";
-            BtnBlocker.BackgroundColor = Color.FromArgb("#1E8E3E");
-            BtnBlocker.TextColor = Colors.White;
+            BtnList.Text = "Update";
+            BtnList.BackgroundColor = Color.FromArgb("#232334");
+            BtnList.TextColor = Color.FromArgb("#DCDCF0");
+
+            var when = Hagezi.SavedAt;
+            LayerListInfo.Text = when is null
+                ? $"{Hagezi.Count:N0} domains loaded"
+                : $"{Hagezi.Count:N0} domains \u00b7 saved {when.Value.LocalDateTime:dd MMM}";
         }
         else
         {
-            BtnBlocker.Text = "AD BLOCKER: OFF";
-            BtnBlocker.BackgroundColor = Color.FromArgb("#4A4A5A");
-            BtnBlocker.TextColor = Color.FromArgb("#E8E8F0");
+            BtnList.Text = "Get";
+            BtnList.BackgroundColor = Color.FromArgb("#8F80F5");
+            BtnList.TextColor = Colors.White;
+            LayerListInfo.Text = "Not downloaded yet \u00b7 tap Get to fetch it";
         }
+
+        // ---- Layer 3: Private DNS ----
+        BtnDns.Text = "Open";
+        BtnDns.BackgroundColor = Color.FromArgb("#232334");
+        BtnDns.TextColor = Color.FromArgb("#DCDCF0");
+        LayerDnsInfo.Text = "Blocks in other apps too, even with Un0Tv closed";
+
+        HomeHint.Text = _filterOn
+            ? "Arrows move, OK presses. Filtering is on."
+            : "Filtering is off. Turn the first layer on to block adverts.";
+
+        DrawActivityHeader();
     }
 
-    private void FocusFirstGateButton(VisualElement target)
+    private void DrawActivityHeader()
+    {
+        BtnRowsFilter.Text = _blockedOnly ? "Blocked" : "All";
+        BtnRowsFilter.BackgroundColor = Color.FromArgb(_blockedOnly ? "#3A2E5C" : "#232334");
+        BtnRowsFilter.TextColor = Color.FromArgb(_blockedOnly ? "#C7B8FF" : "#DCDCF0");
+
+        AdStats.Apply(_blockedOnly, _visibleRows);
+        ActivityEmpty.IsVisible = _visibleRows.Count == 0;
+    }
+
+    private void StartBeat()
+    {
+        if (_beat is not null)
+            return;
+
+        _beat = Dispatcher.CreateTimer();
+        _beat.Interval = TimeSpan.FromSeconds(1);
+        _beat.Tick += (_, _) =>
+        {
+            // Only while one of our screens is up: the figures are for the
+            // viewer, not for the page.
+            if (!IsGateVisible)
+                return;
+
+            AdStats.Drain();
+
+            if (HomePanel.IsVisible)
+            {
+                BlockedToday.Text = AdStats.BlockedToday.ToString("N0");
+                ChecksToday.Text = AdStats.ChecksToday == 0
+                    ? "No lookups yet"
+                    : $"{AdStats.ChecksToday:N0} lookups checked";
+                LayerCount.Text = $"{(_filterOn ? 1 : 0) + (Hagezi.IsLoaded ? 1 : 0) + 1} of 3 layers on";
+            }
+
+            if (ActivityPanel.IsVisible)
+                DrawActivityHeader();
+        };
+
+        _beat.Start();
+    }
+
+    private void StopBeat()
+    {
+        _beat?.Stop();
+        _beat = null;
+        AdStats.Save();
+    }
+
+    private void FocusFirst(VisualElement target)
     {
         // A TV has no pointer, so put the remote's ring on the first action.
         Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(150), () =>
@@ -128,98 +240,134 @@ public partial class MainPage : ContentPage
         });
     }
 
-    // The switch. Turning it on with no list saved downloads the list first;
-    // turning it off just stops filtering, which takes effect immediately.
-    private async void OnBlockerToggled(object? sender, EventArgs e)
+    // ---------------------------------------------------------------
+    // The switches and the buttons
+    // ---------------------------------------------------------------
+
+    // Layer 1. Turning it on with no list saved fetches the list first, so the
+    // shield never says "Protected" while the filter has nothing to match.
+    private async void OnFilterToggled(object? sender, EventArgs e)
     {
         if (_busy)
             return;
 
-        if (_blockerOn)
-        {
-            SetBlocker(false);
-            GateStatus.Text = "Ad blocking is off. Adverts and pop-ups will show.";
-            GateHint.Text = "Press the switch again to turn filtering back on.";
-            return;
-        }
+        _filterOn = !_filterOn;
+        try { Preferences.Set(FilterPref, _filterOn); } catch { }
 
-        SetBlocker(true);
+        DrawLayers();
 
-        // Turning it on when nothing is saved yet means downloading first.
-        if (!Hagezi.IsLoaded)
-            await DownloadListAsync();
-        else
-            GateStatus.Text = $"{Hagezi.Count:N0} ad, tracker and malware domains ready.";
+        if (_filterOn && !Hagezi.IsLoaded)
+            await FetchListAsync();
     }
 
-    private void SetBlocker(bool on)
+    // Layer 2. Fetches the five HaGeZi lists (or refreshes them).
+    private async void OnListClicked(object? sender, EventArgs e)
     {
-        _blockerOn = on;
-        try
-        {
-            Preferences.Set(BlockerPref, on);
-        }
-        catch { }
+        if (_busy)
+            return;
 
-        RefreshBlockerUi();
+        await FetchListAsync();
     }
 
-    // ---------------------------------------------------------------
-    // Downloading the list
-    // ---------------------------------------------------------------
-
-    // Set while a download is running, so the buttons cannot start a second
-    // one on top of the first.
     private bool _busy;
 
-    private async void OnUpdateClicked(object? sender, EventArgs e)
-    {
-        if (_busy)
-            return;
-
-        await DownloadListAsync();
-    }
-
-    private async Task DownloadListAsync()
+    private async Task FetchListAsync()
     {
         _busy = true;
-        GateProgress.IsVisible = true;
-        BtnBlocker.IsEnabled = false;
+        ListProgress.IsVisible = true;
+        ListProgress.Progress = 0;
+        BtnFilter.IsEnabled = false;
+        BtnList.IsEnabled = false;
         BtnStart.IsEnabled = false;
-        BtnUpdate.IsEnabled = false;
+        BtnActivity.IsEnabled = false;
 
         try
         {
             var progress = new Progress<string>(m =>
             {
-                GateStatus.Text = m;
-
-                // Five lists, so the bar creeps along as each one arrives.
-                GateProgress.Progress = Math.Min(0.9, GateProgress.Progress + 0.18);
+                LayerListInfo.Text = m;
+                ListProgress.Progress = Math.Min(0.9, ListProgress.Progress + 0.18);
             });
 
             var count = await Hagezi.DownloadAsync(progress);
 
-            GateProgress.Progress = 1;
-            GateStatus.Text = $"{count:N0} ad, tracker and malware domains ready.";
-            GateHint.Text = "Saved on this TV. Filtering is on.";
-            SetBlocker(true);
-            BtnUpdate.IsVisible = true;
+            ListProgress.Progress = 1;
+            _filterOn = true;
+            try { Preferences.Set(FilterPref, true); } catch { }
+            DrawLayers(true);
+            LayerListInfo.Text = $"{count:N0} domains ready";
         }
         catch (Exception ex)
         {
-            GateProgress.Progress = 0;
-            GateStatus.Text = "The block list could not be downloaded.";
-            GateHint.Text = ex.Message + " Press the switch to try again.";
+            ListProgress.Progress = 0;
+            LayerListInfo.Text = "Could not download. Tap Get to try again.";
+            HomeHint.Text = ex.Message;
         }
         finally
         {
             _busy = false;
-            GateProgress.IsVisible = false;
-            BtnBlocker.IsEnabled = true;
+            ListProgress.IsVisible = false;
+            BtnFilter.IsEnabled = true;
+            BtnList.IsEnabled = true;
             BtnStart.IsEnabled = true;
-            BtnUpdate.IsEnabled = true;
+            BtnActivity.IsEnabled = true;
         }
+    }
+
+    // Layer 3. The TV's own Private DNS lives in Android's settings, which is
+    // the one thing an app cannot switch on for you - so this opens that page.
+    private async void OnDnsClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+#if ANDROID
+            // Android 9+ sends Private DNS under this settings screen. Makers
+            // move it, so the general settings page is the fallback.
+            var intent = new Android.Content.Intent(Android.Provider.Settings.ActionSettings);
+            intent.AddFlags(Android.Content.ActivityFlags.NewTask);
+            Android.App.Application.Context.StartActivity(intent);
+#else
+            await DisplayAlert("Private DNS",
+                "Open the TV's network settings and set Private DNS to dns.adguard.com.",
+                "Got it");
+#endif
+        }
+        catch
+        {
+            await DisplayAlert("Private DNS",
+                "Open the TV's network settings and set Private DNS to dns.adguard.com.",
+                "Got it");
+        }
+    }
+
+    private void OnActivityClicked(object? sender, EventArgs e)
+    {
+        HomePanel.IsVisible = false;
+        ActivityPanel.IsVisible = true;
+
+        // Rows are only collected while a screen is looking at them.
+        AdStats.IsWatched = true;
+        AdStats.Drain();
+        DrawActivityHeader();
+
+        FocusFirst(BtnBack);
+    }
+
+    private void OnBackToHomeClicked(object? sender, EventArgs e)
+    {
+        ActivityPanel.IsVisible = false;
+        AdStats.IsWatched = false;
+        ShowHome();
+        FocusFirst(BtnActivity);
+    }
+
+    // All / Blocked, the two tabs Repel puts above its list.
+    private void OnRowsFilterClicked(object? sender, EventArgs e)
+    {
+        _blockedOnly = !_blockedOnly;
+        try { Preferences.Set(RowsPref, _blockedOnly); } catch { }
+
+        DrawActivityHeader();
     }
 
     private void OnStartClicked(object? sender, EventArgs e) => StartSite();
@@ -227,35 +375,50 @@ public partial class MainPage : ContentPage
     private void StartSite()
     {
         _siteStarted = true;
-        AdGate.IsVisible = false;
+        AdStats.IsWatched = false;
+        HomePanel.IsVisible = false;
+        ActivityPanel.IsVisible = false;
+        StopBeat();
         Browser.Source = SiteUrl;
     }
 
     // ---------------------------------------------------------------
-    // Moving between the startup buttons with the remote
+    // Moving between the screen's buttons with the remote
     // ---------------------------------------------------------------
 
-    // The startup screen is native, not a page, so Android decides this by
-    // itself only sometimes. This walks the visible buttons in order, which is
-    // what the remote's arrows need on a TV.
+    // These screens are native, not pages, so Android decides this by itself
+    // only sometimes. This walks the visible buttons in order, which is what
+    // the remote's arrows need on a TV.
     internal void MoveGateFocus(int dx, int dy)
     {
-        if (!AdGate.IsVisible)
+        if (!IsGateVisible)
             return;
 
-        var order = new List<Button> { BtnBlocker };
-        if (BtnUpdate.IsVisible) order.Add(BtnUpdate);
-        order.Add(BtnStart);
+        var order = new List<VisualElement>();
+
+        if (HomePanel.IsVisible)
+        {
+            order.Add(BtnFilter);
+            order.Add(BtnList);
+            order.Add(BtnDns);
+            order.Add(BtnActivity);
+            order.Add(BtnStart);
+        }
+        else
+        {
+            order.Add(BtnBack);
+            order.Add(BtnRowsFilter);
+        }
 
         var current = order.FindIndex(b => b.IsFocused);
         if (current < 0)
         {
-            order[0].Focus();
+            try { order[0].Focus(); } catch { }
             return;
         }
 
-        // Only up and down matter for a single column; either way the ring
-        // steps one place, which is what a viewer expects.
+        // Mostly one column (or one row of two), so either key steps once,
+        // which is what a viewer expects.
         var step = dy > 0 ? 1 : dy < 0 ? -1 : dx > 0 ? 1 : -1;
         var next = current + step;
 
@@ -292,7 +455,7 @@ public partial class MainPage : ContentPage
     {
         if (e.Result != WebNavigationResult.Success)
         {
-            // Site failed to load — show a bare error so you're not staring at a black screen
+            // Site failed to load â€” show a bare error so you're not staring at a black screen
             Browser.Source = new HtmlWebViewSource
             {
                 Html = $@"<html><body style='background:#101014;color:#E8E8F0;
@@ -334,6 +497,16 @@ public partial class MainPage : ContentPage
     // Called from MainActivity on Back button
     public bool HandleBack()
     {
+        // On one of our screens, Back returns to the home screen first.
+        if (ActivityPanel.IsVisible)
+        {
+            OnBackToHomeClicked(this, EventArgs.Empty);
+            return true;
+        }
+
+        if (HomePanel.IsVisible)
+            return true;
+
         if (_history.Count > 0)
         {
             var prev = _history.Pop();

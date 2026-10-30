@@ -39,7 +39,8 @@ Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. Th
 |---|---|
 | **TV launcher** | Declares `LEANBACK_LAUNCHER` and ships a TV banner, so Un0Tv appears on the Android TV home screen, not just in the apps list. |
 | **Always landscape** | The activity is locked to landscape with the light bar hidden and the screen kept awake. |
-| **Startup blocker switch** | Before the site opens, a screen shows the built-in ad blocker with an on/off switch. The switch remembers your choice and filtering takes effect immediately. |
+| **Home screen** | Before the site opens, a protection dashboard in the style of Repel: a shield showing whether you are protected, the number of lookups blocked today, and three protection layers, each with its own button. |
+| **Activity log** | A second screen lists what was looked up and whether it got through, newest first, with an All / Blocked tab. |
 | **D-pad navigation** | The remote's arrows move a moving highlight over the site's clickable items; the centre button presses the highlighted one. |
 | **Advert filtering** | Three layers: HaGeZi's Multi PRO list (~214,000 domains) plus a built-in host list on every network request, and an in-page cleaner that runs inside every frame, including the movie player's own. |
 | **Pop-up policy** | The movie player's "can I open a pop-up?" check passes silently, while advert windows are refused and sign-in windows are allowed. |
@@ -52,17 +53,22 @@ Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. Th
 
 ```mermaid
 flowchart TD
-    A("MainActivity<br/>remote keys, fullscreen") --> B("MainPage<br/>one WebView + the blocker switch")
-    B --> C{"Blocker switched on?"}
+    A("MainActivity<br/>remote keys, fullscreen") --> B("MainPage<br/>browser + protection screens")
+    B --> H("Home: shield, blocked today,<br/>three layer buttons")
+    B --> L("Activity: what was looked up")
+    H --> C{"Filter layer on?"}
     C -->|"Off"| E("Site loads, unfiltered")
     C -->|"On"| F("RequestFilter<br/>HaGeZi + built-in list")
-    C -->|"No list saved yet"| D("Download once<br/>~30 MB, kept on the TV")
+    C -->|"List not saved yet"| D("Download once<br/>~30 MB, kept on the TV")
     D --> F
+    F --> S("AdStats<br/>counts every decision")
+    S --> H
+    S --> L
     F --> E
     E --> G("AdCleanupScript<br/>in every frame")
-    E --> H("DpadNav<br/>moves the highlight")
+    E --> N("DpadNav<br/>moves the highlight")
     G --> I("Clean playback")
-    H --> I
+    N --> I
 ```
 
 The app is deliberately thin. It is **one page, one browser, and a handful of Android-side helpers**. There is no native re-render of the site, no scraping and no mirroring, so whatever the site shows is what you see.
@@ -85,7 +91,15 @@ Two rules keep it safe:
 - **A keep list always wins.** The site, its sign-in, the movie players and their video hosts are never blocked.
 - **Whole host names only, never plain words.** `adserver.com` is blocked; a film titled *Shadow* is not. A subdomain such as `a.b.adsite.com` is caught by an entry for `adsite.com`, which is how the wildcard list is meant to work.
 
-The startup screen has one switch. **Off** means nothing is filtered at all — handy if a film refuses to start and you want to rule the blocker out. **On** is the normal setting.
+The home screen has three layer buttons, the way Repel lays out its protection:
+
+| Layer | Button | What it does |
+|---|---|---|
+| **Ad and tracker filter** | `ON` / `OFF` | Turns the app's own filtering on or off. Off means nothing is filtered at all — handy if a film refuses to start and you want to rule the blocker out. |
+| **HaGeZi Multi PRO list** | `Get` / `Update` | Fetches the ~214,000-domain list (around 30 MB, kept on the TV), or refreshes it later. |
+| **Private DNS** | `Open` | Opens the TV's own settings. Android does not let one app change another app's DNS, so this takes you to the screen where you can. Setting it to `dns.adguard.com` blocks adverts in **every** app on the TV, not just Un0Tv. |
+
+The shield turns green and says **Protected** when the filter is on, and the number under it counts lookups refused since midnight. **Activity** opens the log: one row per address, `Blocked` or `Allowed`, with what it was and how long ago. `Blocked` shows only the refused ones.
 
 The five published HaGeZi files all carry the same domains in different formats, and the app merges all five:
 
@@ -119,7 +133,8 @@ Browsers only allow a video to start by itself while it is muted, so the player 
 
 ```
 Un0Tv/
-├── MainPage.xaml / .xaml.cs        One page: the browser plus the blocker switch
+├── MainPage.xaml / .xaml.cs        Home dashboard, Activity log, and the browser
+├── Activity.cs                     The live counters and the activity rows
 ├── PageScripts.cs                  Auto play script injected after each load
 ├── DpadNav.cs                      The moving highlight and its arrow logic
 ├── Hagezi.cs                       The big block list: download, parse, match

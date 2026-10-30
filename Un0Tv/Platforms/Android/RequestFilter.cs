@@ -140,10 +140,26 @@ internal static class RequestFilter
         "mux.com", "videojs.com", "hlsjs.org", "dashjs.org",
     };
 
-    public static bool IsBlocked(string? url)
+    // The answer for one request, and what to call it in the Activity list.
+    public readonly record struct Verdict(bool Blocked, string Label, string Host);
+
+    // Works out what to do with a request and records it for the home screen.
+    // Every caller goes through here, so the numbers under the shield and the
+    // Activity list are the truth about what actually happened.
+    public static Verdict Decide(string? url)
+    {
+        var verdict = Judge(url);
+
+        if (verdict.Host.Length > 0)
+            AdStats.Record(verdict.Host, verdict.Blocked, verdict.Label);
+
+        return verdict;
+    }
+
+    private static Verdict Judge(string? url)
     {
         if (string.IsNullOrWhiteSpace(url))
-            return false;
+            return new Verdict(false, "Request", string.Empty);
 
         string host;
         try
@@ -152,35 +168,51 @@ internal static class RequestFilter
         }
         catch
         {
-            return false;
+            return new Verdict(false, "Request", string.Empty);
         }
 
         if (string.IsNullOrEmpty(host))
-            return false;
+            return new Verdict(false, "Request", string.Empty);
 
         host = host.ToLowerInvariant().TrimEnd('.');
 
         // A keep rule always wins. Checked first so nothing below can undo it.
         if (Matches(host, KeepHosts))
-            return false;
+            return new Verdict(false, LabelForKeep(host), host);
 
         if (host == "localhost" || host.StartsWith("[") || IsIp(host))
-            return false;
+            return new Verdict(false, "This device", host);
 
         // The switch at startup: off means nothing is filtered at all.
         if (!MainPage.IsBlockerOn)
-            return false;
+            return new Verdict(false, "Filter off", host);
 
         // The short list built into the app, which works even before the big
         // public list has been downloaded.
         if (Matches(host, BlockedHosts))
-            return true;
+            return new Verdict(true, "Ad or tracker", host);
 
-        // HaGeZi's Multi PRO list, about 214,000 domains. Empty until the
-        // startup check has downloaded it, in which case this answers false
-        // and only the short list above applies.
-        return Hagezi.Blocks(host);
+        // HaGeZi's Multi PRO list, about 214,000 domains.
+        if (Hagezi.Blocks(host))
+            return new Verdict(true, "HaGeZi block list", host);
+
+        return new Verdict(false, "Request", host);
     }
+
+    // What the allowed addresses are, for the Activity list.
+    private static string LabelForKeep(string host)
+    {
+        if (host.EndsWith("netlify.app", StringComparison.Ordinal) || host.EndsWith("netlify.com", StringComparison.Ordinal))
+            return "The site";
+
+        if (host.Contains("google", StringComparison.Ordinal) || host.Contains("firebase", StringComparison.Ordinal))
+            return "Sign-in";
+
+        return "Video host";
+    }
+
+    // Kept for callers that only need the yes or no.
+    public static bool IsBlocked(string? url) => Decide(url).Blocked;
 
     // True when "host" is exactly one of the names, or a subdomain of it.
     // ".example.com" is not matched by "notexample.com", which is the whole
