@@ -1,0 +1,15 @@
+# Build outputs
+bin/
+obj/
+
+# User-specific files
+.vs/
+*.user
+*.suo
+
+# Signing secrets - never commit these
+signing.props
+*.keystore
+
+# OS-generated files
+.DS_Store

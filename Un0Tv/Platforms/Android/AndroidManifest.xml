@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+	<uses-feature
+		android:name="android.software.leanback"
+		android:required="true" />
+
+	<uses-feature
+		android:name="android.hardware.touchscreen"
+		android:required="false" />
+
+	<!-- Android 11 and newer hide the list of installed apps from us unless the
+	     packages we ask about are declared here. Without this the startup gate
+	     would think the ad filter is missing even after it is installed. -->
+	<queries>
+		<package android:name="app.llcloud.repel" />
+		<package android:name="com.android.vending" />
+	</queries>
+
+	<!-- The launcher activity is declared in MainActivity.cs with the [Activity]
+	     and [IntentFilter] attributes, so it is not repeated here. -->
+	<application
+		android:allowBackup="true"
+		android:banner="@drawable/tv_banner"
+		android:icon="@mipmap/appicon"
+		android:label="Un0Tv"
+		android:usesCleartextTraffic="false"
+		android:supportsRtl="true"
+		android:theme="@style/Maui.SplashTheme" />
+</manifest>
