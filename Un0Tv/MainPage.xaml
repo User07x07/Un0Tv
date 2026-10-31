@@ -453,5 +453,78 @@
 				</VerticalStackLayout>
 			</ScrollView>
 		</Grid>
+		<!-- ============================================================
+		     Browser Protection: the first screen. One switch turns the
+		     shield on, and Proceed opens the site once it is ready.
+		     ============================================================ -->
+		<Grid x:Name="ProtectPanel"
+              IsVisible="False"
+              BackgroundColor="#0D0D12"
+              RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto"
+              RowSpacing="22"
+              Padding="80,56">
+
+			<Label Grid.Row="0"
+                   Text="Browser Protection"
+                   FontSize="36"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   HorizontalOptions="Center" />
+
+			<Label Grid.Row="1"
+                   Text="Switch it on to shield the browser from adverts and trackers."
+                   FontSize="17"
+                   TextColor="#9A9AB2"
+                   HorizontalOptions="Center"
+                   HorizontalTextAlignment="Center" />
+
+			<Grid Grid.Row="2" ColumnDefinitions="*,*" WidthRequest="440" HorizontalOptions="Center">
+				<Label Grid.Column="0" Text="OFF" FontSize="22" FontAttributes="Bold" TextColor="White" HorizontalOptions="Start" />
+				<Label Grid.Column="1" Text="ON" FontSize="22" FontAttributes="Bold" TextColor="White" HorizontalOptions="End" />
+			</Grid>
+
+			<Switch Grid.Row="3"
+                    x:Name="ProtectSwitch"
+                    Toggled="OnProtectToggled"
+                    OnColor="#4CD07D"
+                    ThumbColor="White"
+                    Scale="2.2"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Margin="0,30,0,30" />
+
+			<Label Grid.Row="4"
+                   x:Name="ProtectStatus"
+                   Text=""
+                   FontSize="17"
+                   TextColor="#9A9AB2"
+                   HorizontalOptions="Center"
+                   HorizontalTextAlignment="Center" />
+
+			<Button Grid.Row="5"
+                    x:Name="BtnProceed"
+                    Text="PROCEED TO UNO"
+                    Clicked="OnProceedClicked"
+                    IsEnabled="False"
+                    BackgroundColor="#2A3346"
+                    TextColor="White"
+                    FontSize="22"
+                    FontAttributes="Bold"
+                    WidthRequest="520"
+                    HeightRequest="64"
+                    CornerRadius="12"
+                    HorizontalOptions="Center" />
+
+			<Button Grid.Row="7"
+                    x:Name="BtnProtectSettings"
+                    Text="Settings and layers"
+                    Clicked="OnProtectSettingsClicked"
+                    BackgroundColor="#232334"
+                    TextColor="#DCDCF0"
+                    FontSize="16"
+                    CornerRadius="12"
+                    Padding="26,12"
+                    HorizontalOptions="Center" />
+		</Grid>
 	</Grid>
 </ContentPage>
