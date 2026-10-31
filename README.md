@@ -1,6 +1,6 @@
 # Un0Tv
 
-**A remote-first Android TV shell for website.**
+**A remote-first Android TV that house a website.**
 
 Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. The site itself was built for phones: it expects swipes, has no TV navigation, and serves its films through third-party players covered in adverts. Un0Tv bridges that gap on the TV side, inside one app and without a VPN.
 
