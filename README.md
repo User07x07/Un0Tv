@@ -1,11 +1,11 @@
 # Un0Tv
 
-**A remote-first Android TV that house a website.**
+**A remote-first Android TV shell for website.**
 
-Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. The site itself was built for phones: it expects swipes, has no TV navigation, and serves its films through third-party players covered in adverts. Un0Tv bridges that gap on the TV side.
+Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. The site itself was built for phones: it expects swipes, has no TV navigation, and serves its films through third-party players covered in adverts. Un0Tv bridges that gap on the TV side, inside one app and without a VPN.
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-1.5.0-blueviolet?style=flat-square" />
+  <img alt="version" src="https://img.shields.io/badge/version-1.4.0-blueviolet?style=flat-square" />
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%20TV%20%7C%20Google%20TV-3DDC84?style=flat-square" />
   <img alt="dotnet" src="https://img.shields.io/badge/_.NET-MAUI%20%C2%B7%20net10.0--android-512BD4?style=flat-square" />
   <img alt="min sdk" src="https://img.shields.io/badge/min%20Android-5.0%20(API%2021)-0A84FF?style=flat-square" />
@@ -46,8 +46,6 @@ Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. Th
 | **Pop-up policy** | The movie player's "can I open a pop-up?" check passes silently, while advert windows are refused and sign-in windows are allowed. |
 | **Auto play** | Landing on a watch page presses the site's own play control, then lifts the mute so the film starts with sound. |
 | **Back button** | Leaves fullscreen, closes a sign-in window, or steps one page back inside the site, before it ever closes the app. |
-| **Continue watching** | A row on the home screen lists the titles you started, with the time left. OK on a card reopens that title and jumps to where you stopped. Progress is saved on the TV. |
-| **Whole-TV DNS filter** | A local VPN that filters ad and tracker lookups for every app on the TV. Android asks you to allow the VPN the first time. |
 
 ---
 
@@ -99,7 +97,7 @@ The home screen has three layer buttons, the way Repel lays out its protection:
 |---|---|---|
 | **Ad and tracker filter** | `ON` / `OFF` | Turns the app's own filtering on or off. Off means nothing is filtered at all — handy if a film refuses to start and you want to rule the blocker out. |
 | **HaGeZi Multi PRO list** | `Get` / `Update` | Fetches the ~214,000-domain list (around 30 MB, kept on the TV), or refreshes it later. |
-| **Private DNS** | `Open` | Opens the Private DNS screen. The app tries to switch Private DNS on for the name you pick. If Android blocks that, the TV's own settings page opens so you can set it by hand. Setting it to `dns.adguard.com` blocks adverts in **every** app on the TV, not just Un0Tv. |
+| **Private DNS** | `Open` | Opens the TV's own settings. Android does not let one app change another app's DNS, so this takes you to the screen where you can. Setting it to `dns.adguard.com` blocks adverts in **every** app on the TV, not just Un0Tv. |
 
 The shield turns green and says **Protected** when the filter is on, and the number under it counts lookups refused since midnight. **Activity** opens the log: one row per address, `Blocked` or `Allowed`, with what it was and how long ago. `Blocked` shows only the refused ones.
 
@@ -140,9 +138,6 @@ Un0Tv/
 ├── PageScripts.cs                  Auto play script injected after each load
 ├── DpadNav.cs                      The moving highlight and its arrow logic
 ├── Hagezi.cs                       The big block list: download, parse, match
-├── DnsPresets.cs                   Private DNS names offered on the presets screen
-├── PlayerControl.cs                Player messages: saves progress, resumes, remote keys
-├── WatchProgress.cs                Saved watch progress behind the Continue watching row
 ├── version.json                    Base version for Nerdbank.GitVersioning
 └── Platforms/Android/
     ├── MainActivity.cs             Remote keys, fullscreen, Back, keyboard detection
@@ -153,9 +148,7 @@ Un0Tv/
     ├── RequestFilter.cs            Keep list, short block list, the switch check
     ├── PopupGuard.cs               Which pop-up windows are allowed
     ├── AdCleanupScript.cs          In-frame advert cleaner
-    ├── AudioAutoplay.cs            Sound-on autoplay inside the player
-    ├── DnsFilterService.cs         Whole-TV DNS filter (a local VPN)
-    └── ProgressBridge.cs           Lets the site's script save progress to the app
+    └── AudioAutoplay.cs            Sound-on autoplay inside the player
 ```
 
 ---
@@ -259,7 +252,6 @@ If the TV says **"App not installed"**:
 | **Up / Down / Left / Right** | Moves the highlight to the nearest clickable item in that direction |
 | **Center / Enter** | Presses the highlighted item |
 | **Back** | Leaves fullscreen, or closes the sign-in window, or steps back one page, or exits the app |
-| **Play / Pause / Fast forward / Rewind** | Control the movie player while a film is open |
 
 The startup gate uses Android's own focus movement, so the D-pad works there in the normal TV way.
 
@@ -267,16 +259,16 @@ The startup gate uses Android's own focus movement, so the D-pad works there in 
 
 ## Versioning
 
-Current version: **1.5.0**.
+Current version: **1.4.0** (Android version code **5**).
 
-`version.json` holds the base version (`1.5`). The build reads it together with the git history through `Nerdbank.GitVersioning`, and sets the two Android numbers itself:
+`version.json` holds the base version (`1.4`), and `Nerdbank.GitVersioning` is installed to expand it from git history. Android needs two numbers, and both must climb on every install or the TV treats the new file as the same old app and refuses to update it:
 
-| Android setting | What it means | What the build writes |
+| Android setting | What it means | Current value |
 |---|---|---|
-| Version name | The version you see on the TV | The base `1.5`, then a number that grows with each commit, then the git id. For example `1.5.0-g5670ab20f4` |
-| Version code | A whole number that must increase on every install | A number worked out from the version and git history |
+| `ApplicationDisplayVersion` | The version you see, for example `1.4.0` | `1.4.0` |
+| `ApplicationVersion` | A whole number that must increase on every install | `5` |
 
-> **To change the version, edit `version.json`.** The two numbers typed in `Un0Tv.csproj` are overridden by the build, so they never reach the TV. Never set a lower version code: a TV refuses to install an update with a lower one.
+> **Status:** the two numbers in `Un0Tv.csproj` are still hand-typed rather than driven by the versioning package. **Bump `ApplicationVersion` by one for every APK you install** — a repeat number is the usual reason a TV refuses an update.
 
 ---
 
@@ -287,8 +279,7 @@ Current version: **1.5.0**.
 - **The ad filter app's switch is not automatic.** Android will not let one app turn on another app's filter. The startup gate verifies it and opens the right screen; the final toggle is yours to press.
 - **Burning-in is forever.** A logo or QR encoded into the video picture itself is part of the film, so no layer can remove it.
 - **Only one site.** The address lives in `MainPage.xaml.cs` as `SiteUrl`. The scripts that press play and clean covers are tuned to that site's markup.
-- **Not yet tested on a TV:** the Continue watching row, resume, the player keys and the whole-TV DNS filter.
 
 ---
 
-<p align="center"><sub>Un0Tv 1.5.0 · built for a remote, not a thumb · tested on Sony Android TV</sub></p>
+<p align="center"><sub>Un0Tv 1.2.0 · built for a remote, not a thumb · tested on Sony Android TV</sub></p>
