@@ -29,6 +29,38 @@ namespace Un0Tv;
               Categories = new[] { Intent.CategoryLeanbackLauncher })]
 public class MainActivity : MauiAppCompatActivity
 {
+    private const int VpnRequest = 4711;
+
+    // The running activity, so the home screen can start the VPN filter.
+    public static MainActivity? Current { get; private set; }
+
+    // Starts the whole-TV DNS filter. Android shows its own "allow this VPN"
+    // box the first time; the answer comes back in OnActivityResult.
+    public void StartVpnFlow()
+    {
+        var consent = Android.Net.VpnService.Prepare(this);
+        if (consent is null)
+            StartDnsService();
+        else
+            StartActivityForResult(consent, VpnRequest);
+    }
+
+    public void StopVpnFlow()
+        => StopService(new Intent(this, typeof(DnsFilterService)));
+
+    private void StartDnsService()
+        => StartService(new Intent(this, typeof(DnsFilterService)));
+
+    protected override void OnActivityResult(int requestCode, Android.App.Result resultCode, Intent? data)
+    {
+        base.OnActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == VpnRequest && resultCode == Android.App.Result.Ok)
+            StartDnsService();
+
+        MainPage.Instance?.RefreshVpn();
+    }
+
     // Find the screen: first the direct handle, then by walking the Shell.
     private static MainPage? Page
     {
@@ -153,6 +185,7 @@ public class MainActivity : MauiAppCompatActivity
             WindowManagerFlags.Fullscreen | WindowManagerFlags.KeepScreenOn);
 
         base.OnCreate(savedInstanceState);
+        Current = this;
 
         // The on-screen keyboard needs the window to resize, so the layout
         // below can tell when it is up and hand the keys over to it.

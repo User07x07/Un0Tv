@@ -5,7 +5,7 @@
 Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. The site itself was built for phones: it expects swipes, has no TV navigation, and serves its films through third-party players covered in adverts. Un0Tv bridges that gap on the TV side, inside one app and without a VPN.
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-1.2.0-blueviolet?style=flat-square" />
+  <img alt="version" src="https://img.shields.io/badge/version-1.4.0-blueviolet?style=flat-square" />
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%20TV%20%7C%20Google%20TV-3DDC84?style=flat-square" />
   <img alt="dotnet" src="https://img.shields.io/badge/_.NET-MAUI%20%C2%B7%20net10.0--android-512BD4?style=flat-square" />
   <img alt="min sdk" src="https://img.shields.io/badge/min%20Android-5.0%20(API%2021)-0A84FF?style=flat-square" />
@@ -259,14 +259,14 @@ The startup gate uses Android's own focus movement, so the D-pad works there in 
 
 ## Versioning
 
-Current version: **1.2.0** (Android version code **3**).
+Current version: **1.4.0** (Android version code **5**).
 
-`version.json` holds the base version (`1.1`), and `Nerdbank.GitVersioning` is installed to expand it from git history. Android needs two numbers, and both must climb on every install or the TV treats the new file as the same old app and refuses to update it:
+`version.json` holds the base version (`1.4`), and `Nerdbank.GitVersioning` is installed to expand it from git history. Android needs two numbers, and both must climb on every install or the TV treats the new file as the same old app and refuses to update it:
 
 | Android setting | What it means | Current value |
 |---|---|---|
-| `ApplicationDisplayVersion` | The version you see, for example `1.2.0` | `1.2.0` |
-| `ApplicationVersion` | A whole number that must increase on every install | `2` |
+| `ApplicationDisplayVersion` | The version you see, for example `1.4.0` | `1.4.0` |
+| `ApplicationVersion` | A whole number that must increase on every install | `5` |
 
 > **Status:** the two numbers in `Un0Tv.csproj` are still hand-typed rather than driven by the versioning package. **Bump `ApplicationVersion` by one for every APK you install** — a repeat number is the usual reason a TV refuses an update.
 

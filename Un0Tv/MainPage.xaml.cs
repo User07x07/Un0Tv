@@ -39,7 +39,7 @@ public partial class MainPage : ContentPage
     // True while a screen of ours is over the site, so the activity leaves the
     // remote's keys to our own focus movement instead of sending them to a page
     // that has not loaded.
-    public bool IsGateVisible => HomePanel.IsVisible || ActivityPanel.IsVisible;
+    public bool IsGateVisible => HomePanel.IsVisible || ActivityPanel.IsVisible || DnsPanel.IsVisible;
 
     // Asked for every request by RequestFilter: should this be filtered?
     public static bool IsBlockerOn => _filterOn;
@@ -100,6 +100,7 @@ public partial class MainPage : ContentPage
             return;
 
         ActivityPanel.IsVisible = false;
+        DnsPanel.IsVisible = false;
         HomePanel.IsVisible = true;
         ListProgress.IsVisible = false;
         DrawLayers();
@@ -316,7 +317,7 @@ public partial class MainPage : ContentPage
 
     // Layer 3. The TV's own Private DNS lives in Android's settings, which is
     // the one thing an app cannot switch on for you - so this opens that page.
-    private async void OnDnsClicked(object? sender, EventArgs e)
+    private async void OnOpenDnsSettingsClicked(object? sender, EventArgs e)
     {
         try
         {
@@ -328,16 +329,108 @@ public partial class MainPage : ContentPage
             Android.App.Application.Context.StartActivity(intent);
 #else
             await DisplayAlert("Private DNS",
-                "Open the TV's network settings and set Private DNS to dns.adguard.com.",
+                $"Open the TV's network settings and set Private DNS to {DnsPresets.Current.Host}.",
                 "Got it");
 #endif
         }
         catch
         {
             await DisplayAlert("Private DNS",
-                "Open the TV's network settings and set Private DNS to dns.adguard.com.",
+                $"Open the TV's network settings and set Private DNS to {DnsPresets.Current.Host}.",
                 "Got it");
         }
+    }
+
+    // Opens the presets screen from the Private DNS row on the home screen.
+    private void OnDnsPanelClicked(object? sender, EventArgs e)
+    {
+        HomePanel.IsVisible = false;
+        DnsPanel.IsVisible = true;
+        DrawPresets();
+        DrawVpn();
+        FocusFirst(BtnDnsBack);
+    }
+
+    private void OnDnsBackClicked(object? sender, EventArgs e)
+    {
+        DnsPanel.IsVisible = false;
+        ShowHome();
+        FocusFirst(BtnDns);
+    }
+
+    private readonly List<Button> _presetButtons = new();
+
+    // Builds one button per preset, once, above the two fixed buttons.
+    private void BuildPresets()
+    {
+        if (_presetButtons.Count > 0)
+            return;
+
+        for (var i = 0; i < DnsPresets.All.Length; i++)
+        {
+            var index = i;
+            var button = new Button
+            {
+                FontSize = 17,
+                CornerRadius = 12,
+                Padding = new Thickness(22, 12),
+                HorizontalOptions = LayoutOptions.Start,
+                BackgroundColor = Color.FromArgb("#15151F"),
+                TextColor = Color.FromArgb("#EDEDF7")
+            };
+            button.Clicked += (_, _) => PickPreset(index);
+            _presetButtons.Add(button);
+            DnsPresetList.Children.Insert(i, button);
+        }
+    }
+
+    private void DrawPresets()
+    {
+        BuildPresets();
+
+        for (var i = 0; i < _presetButtons.Count; i++)
+        {
+            var mark = i == DnsPresets.SelectedIndex ? "\u2713  " : "";
+            _presetButtons[i].Text = mark + DnsPresets.All[i].Name;
+        }
+
+        var cur = DnsPresets.Current;
+        DnsPresetInfo.Text = $"Chosen: {cur.Host} \u00b7 {cur.Note}";
+    }
+
+    // Chooses a preset and copies its name, so it can be pasted into the TV's
+    // Private DNS page.
+    private async void PickPreset(int index)
+    {
+        DnsPresets.SelectedIndex = index;
+        DrawPresets();
+
+        var host = DnsPresets.Current.Host;
+        try { await Clipboard.Default.SetTextAsync(host); } catch { }
+
+        DnsPresetInfo.Text = $"{host} copied. Press Open the TV's Private DNS page and paste it.";
+    }
+
+    // Turns the whole-TV VPN filter on or off. Android asks for permission the
+    // first time; the answer comes back to the main activity.
+    private void OnVpnClicked(object? sender, EventArgs e)
+    {
+#if ANDROID
+        if (DnsSettings.VpnRunning)
+            MainActivity.Current?.StopVpnFlow();
+        else
+            MainActivity.Current?.StartVpnFlow();
+#endif
+        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(800), RefreshVpn);
+    }
+
+    public void RefreshVpn() => DrawVpn();
+
+    private void DrawVpn()
+    {
+        BtnVpn.Text = DnsSettings.VpnRunning
+            ? "Stop the VPN filter"
+            : "Filter every app on this TV (VPN)";
     }
 
     private void OnActivityClicked(object? sender, EventArgs e)
@@ -403,6 +496,14 @@ public partial class MainPage : ContentPage
             order.Add(BtnDns);
             order.Add(BtnActivity);
             order.Add(BtnStart);
+        }
+        else if (DnsPanel.IsVisible)
+        {
+            foreach (var b in _presetButtons)
+                order.Add(b);
+            order.Add(BtnVpn);
+            order.Add(BtnOpenDns);
+            order.Add(BtnDnsBack);
         }
         else
         {
@@ -501,6 +602,12 @@ public partial class MainPage : ContentPage
         if (ActivityPanel.IsVisible)
         {
             OnBackToHomeClicked(this, EventArgs.Empty);
+            return true;
+        }
+
+        if (DnsPanel.IsVisible)
+        {
+            OnDnsBackClicked(this, EventArgs.Empty);
             return true;
         }
 

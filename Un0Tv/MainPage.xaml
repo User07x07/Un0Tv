@@ -242,7 +242,7 @@
 						<Button x:Name="BtnDns"
                                 Grid.Column="2"
                                 Text="Open"
-                                Clicked="OnDnsClicked"
+                                Clicked="OnDnsPanelClicked"
                                 FontSize="15"
                                 FontAttributes="Bold"
                                 Padding="0"
@@ -391,6 +391,67 @@
 					</DataTemplate>
 				</CollectionView.ItemTemplate>
 			</CollectionView>
+		</Grid>
+
+		<!-- ============================================================
+		     Private DNS presets: the list of DNS names to paste into the
+		     TV's own Private DNS page, plus the whole-TV VPN filter.
+		     ============================================================ -->
+		<Grid x:Name="DnsPanel"
+              IsVisible="False"
+              BackgroundColor="#0D0D12"
+              RowDefinitions="Auto,Auto,*"
+              RowSpacing="18"
+              Padding="52,38">
+
+			<Grid Grid.Row="0" ColumnDefinitions="Auto,*" ColumnSpacing="22">
+				<Button x:Name="BtnDnsBack"
+                        Grid.Column="0"
+                        Text="&#x2190; Home"
+                        Clicked="OnDnsBackClicked"
+                        BackgroundColor="#232334"
+                        TextColor="#DCDCF0"
+                        FontSize="17"
+                        Padding="22,12"
+                        CornerRadius="12" />
+
+				<Label Grid.Column="1"
+                       Text="Private DNS presets"
+                       FontSize="30"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       VerticalOptions="Center" />
+			</Grid>
+
+			<Label x:Name="DnsPresetInfo"
+                   Grid.Row="1"
+                   Text=""
+                   FontSize="16"
+                   TextColor="#9A9AB2" />
+
+			<ScrollView Grid.Row="2">
+				<VerticalStackLayout x:Name="DnsPresetList" Spacing="10">
+
+					<!-- The preset buttons are added here in code, above these two. -->
+					<Button x:Name="BtnVpn"
+                            Text="Filter every app on this TV (VPN)"
+                            Clicked="OnVpnClicked"
+                            BackgroundColor="#1F6FEB"
+                            TextColor="White"
+                            FontSize="17"
+                            FontAttributes="Bold"
+                            CornerRadius="12"
+                            Margin="0,14,0,0" />
+
+					<Button x:Name="BtnOpenDns"
+                            Text="Open the TV's Private DNS page"
+                            Clicked="OnOpenDnsSettingsClicked"
+                            BackgroundColor="#232334"
+                            TextColor="#DCDCF0"
+                            FontSize="17"
+                            CornerRadius="12" />
+				</VerticalStackLayout>
+			</ScrollView>
 		</Grid>
 	</Grid>
 </ContentPage>
