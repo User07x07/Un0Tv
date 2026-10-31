@@ -39,7 +39,7 @@ public partial class MainPage : ContentPage
     // True while a screen of ours is over the site, so the activity leaves the
     // remote's keys to our own focus movement instead of sending them to a page
     // that has not loaded.
-    public bool IsGateVisible => ProtectPanel.IsVisible || HomePanel.IsVisible || ActivityPanel.IsVisible || DnsPanel.IsVisible;
+    public bool IsGateVisible => HomePanel.IsVisible || ActivityPanel.IsVisible || DnsPanel.IsVisible;
 
     // Asked for every request by RequestFilter: should this be filtered?
     public static bool IsBlockerOn => _filterOn;
@@ -66,10 +66,7 @@ public partial class MainPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        if (!_siteStarted && !ProtectPanel.IsVisible && !HomePanel.IsVisible)
-            ShowProtect();
-        else
-            ShowHome();
+        ShowHome();
     }
 
     protected override void OnDisappearing()
@@ -468,76 +465,6 @@ public partial class MainPage : ContentPage
 
     private void OnStartClicked(object? sender, EventArgs e) => StartSite();
 
-    // ---------------------------------------------------------------
-    // Browser Protection: the first screen
-    // ---------------------------------------------------------------
-
-    // Shows the protection screen. The switch always starts from the saved
-    // state, so it matches the shield on the home screen.
-    private void ShowProtect()
-    {
-        HomePanel.IsVisible = false;
-        ActivityPanel.IsVisible = false;
-        DnsPanel.IsVisible = false;
-        ProtectPanel.IsVisible = true;
-
-        ProtectSwitch.Toggled -= OnProtectToggled;
-        ProtectSwitch.IsToggled = _filterOn;
-        ProtectSwitch.Toggled += OnProtectToggled;
-
-        DrawProtect();
-        FocusFirst(ProtectSwitch);
-    }
-
-    // Turning the switch on starts the shield at once. If the list is not
-    // saved yet, it is fetched first, so "Protected" is never a lie.
-    private async void OnProtectToggled(object? sender, ToggledEventArgs e)
-    {
-        if (_busy)
-            return;
-
-        _filterOn = e.Value;
-        try { Preferences.Set(FilterPref, _filterOn); } catch { }
-
-        if (_filterOn && !Hagezi.IsLoaded)
-        {
-            ProtectStatus.Text = "Turning the shield on. Downloading the block list...";
-            BtnProceed.IsEnabled = false;
-            await FetchListAsync();
-        }
-
-        DrawProtect();
-    }
-
-    private void DrawProtect()
-    {
-        var on = _filterOn && Hagezi.IsLoaded;
-
-        ProtectStatus.Text = on
-            ? "Protected. Proceed to Un0 will be Enabled."
-            : _filterOn
-                ? "Shield is on, but the block list is not ready yet."
-                : "Shield is off. Adverts and trackers will show.";
-
-        BtnProceed.IsEnabled = on;
-        BtnProceed.BackgroundColor = Color.FromArgb(on ? "#1F6FEB" : "#2A3346");
-    }
-
-    private void OnProceedClicked(object? sender, EventArgs e)
-    {
-        if (!_filterOn || !Hagezi.IsLoaded)
-            return;
-
-        ProtectPanel.IsVisible = false;
-        StartSite();
-    }
-
-    private void OnProtectSettingsClicked(object? sender, EventArgs e)
-    {
-        ProtectPanel.IsVisible = false;
-        ShowHome();
-    }
-
     private void StartSite()
     {
         _siteStarted = true;
@@ -568,13 +495,7 @@ public partial class MainPage : ContentPage
             order.Add(BtnList);
             order.Add(BtnDns);
             order.Add(BtnActivity);
-            order.Add(BtnProtectSettings);
-        }
-        else if (ProtectPanel.IsVisible)
-        {
-            order.Add(ProtectSwitch);
-            order.Add(BtnProceed);
-            order.Add(BtnProtectSettings);
+            order.Add(BtnStart);
         }
         else if (DnsPanel.IsVisible)
         {

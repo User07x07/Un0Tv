@@ -36,8 +36,8 @@
 
 		<!-- Versions. ApplicationVersion must go UP on every install, or the TV
 		     treats a new APK as the same old app and refuses the update. -->
-		<ApplicationDisplayVersion>1.5.0</ApplicationDisplayVersion>
-		<ApplicationVersion>6</ApplicationVersion>
+		<ApplicationDisplayVersion>1.4.0</ApplicationDisplayVersion>
+		<ApplicationVersion>5</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>None</WindowsPackageType>
