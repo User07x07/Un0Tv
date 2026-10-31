@@ -7,6 +7,8 @@ namespace Un0Tv;
 // on and accepts letters from the app, typed into that box the same way a
 // person typing would fill it - including telling the site that the text
 // changed, which is what makes its search react.
+// The site's search box is a plain box holding the real input, so pressing it
+// inside the site also means finding that input first.
 public static class FieldInput
 {
     public static readonly string Js = """
@@ -28,10 +30,77 @@ public static class FieldInput
     return !!el.isContentEditable;
   }
 
+  // The site draws its search box as a plain div with the real input inside it,
+  // so a box that only looks like search still has to be opened.
+  function searchy(el) {
+    if (!el) return false;
+    var hint = '';
+    try {
+      hint = ((el.getAttribute('placeholder') || '') + ' '
+            + (el.getAttribute('aria-label') || '') + ' '
+            + (el.getAttribute('name') || '') + ' '
+            + (el.id || '') + ' '
+            + (el.className && el.className.toString ? el.className.toString() : '')).toLowerCase();
+    } catch (e) { hint = ''; }
+    if (hint.indexOf('search') >= 0 || hint.indexOf('find') >= 0) return true;
+    try {
+      if (el.querySelector
+          && el.querySelector('input[type="search"],input[placeholder],input:not([type])'))
+        return true;
+    } catch (e) { }
+    return false;
+  }
+
+  // The box the letters should go into: the real input, looked for inside the
+  // box the remote is on when that box is not one itself.
+  function fieldWithin(el) {
+    if (!el) return null;
+    if (editable(el)) return el;
+    try {
+      var found = el.querySelector
+        ? el.querySelector('input[type="search"],input:not([type]),textarea,input[placeholder]')
+        : null;
+      if (found && editable(found)) return found;
+    } catch (e) { }
+    return null;
+  }
+
+  // Called when the viewer presses OK on the site's search box. Returns true
+  // when a real box was found and focused, so the app can show its keys.
+  function focusBest() {
+    var box = null;
+    try { box = window.__un0tvNav && window.__un0tvNav.current ? window.__un0tvNav.current() : null; } catch (e) { }
+    var el = fieldWithin(box) || fieldWithin(active) || (editable(document.activeElement) ? document.activeElement : null);
+    if (!el) {
+      // Last try: the first search box on the page, which is the one in the
+      // site's header.
+      try {
+        var any = document.querySelector('input[type="search"],input[placeholder*="earch" i]');
+        if (editable(any)) el = any;
+      } catch (e) { }
+    }
+    if (!el) return false;
+    active = el;
+    try { el.focus({ preventScroll: true }); } catch (e) { }
+    return true;
+  }
+
   function report() {
+    // The ring landing on a box only remembers it. The keys come up when the
+    // viewer presses OK - on the box itself, or on a box that passes the press
+    // on to its own search field.
     try {
       if (window.Un0TvNative && window.Un0TvNative.fieldFocused)
         window.Un0TvNative.fieldFocused();
+    } catch (e) { }
+
+    var acted = 0;
+    try { acted = window.__un0tvActedAt || 0; } catch (e) { }
+    if (!acted || Date.now() - acted > 2500) return;
+
+    try {
+      if (window.Un0TvNative && window.Un0TvNative.openKeyboard)
+        window.Un0TvNative.openKeyboard();
     } catch (e) { }
   }
 
@@ -125,6 +194,7 @@ public static class FieldInput
     backspace: function () { try { return backspace(); } catch (e) { return false; } },
     clear: function () { try { return clear(); } catch (e) { return false; } },
     submit: function () { try { return submit(); } catch (e) { return false; } },
+    focusBest: function () { try { return focusBest(); } catch (e) { return false; } },
     blur: function () { try { if (active) active.blur(); } catch (e) { } }
   };
 })();

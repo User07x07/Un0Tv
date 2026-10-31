@@ -36,11 +36,17 @@ public static class ContinueNav
     try { return JSON.parse(localStorage.getItem(META) || '{}') || {}; } catch (e) { return {}; }
   }
 
-  // Only the pages where a row of films belongs.
+  // Only the pages where a row of films belongs. A film or an episode page is
+  // not one of them.
   function wantedPath() {
     var p = (location.pathname || '/').toLowerCase();
+    var skip = ['/watch', 'player', '/movie/', '/tv/', '/show/', '/episode/'];
+    for (var s = 0; s < skip.length; s++) {
+      if (p.indexOf(skip[s]) >= 0) return false;
+    }
     if (p === '/' || p === '') return true;
-    var words = ['library', 'home', 'browse', 'movies', 'tv', 'discover', 'search'];
+    var words = ['library', 'home', 'browse', 'movies', 'tv', 'discover', 'search',
+                 'continue', 'watchlist', 'latest', 'trending', 'genre', 'series'];
     for (var i = 0; i < words.length; i++) {
       if (p.indexOf(words[i]) >= 0) return true;
     }
@@ -122,6 +128,9 @@ public static class ContinueNav
         var card = document.createElement('div');
         card.setAttribute('role', 'button');
         card.setAttribute('tabindex', '0');
+        // Marks the card for the remote's navigation, so the ring can land on
+        // it and OK opens the title.
+        card.setAttribute('data-un0tv-continue', '1');
         card.className = 'un0tv-continue-card';
         card.style.cssText = 'flex:0 0 auto;width:150px;cursor:pointer;'
           + 'border-radius:10px;overflow:hidden;background:#101827;'
@@ -207,6 +216,21 @@ public static class ContinueNav
       if (box === document.body) document.body.insertBefore(row, document.body.firstChild);
       else box.insertBefore(row, box.firstChild);
       lastPath = location.pathname;
+
+      // The site may already be scrolled down, which would leave the row
+      // above the screen. Bring it into view once, where it was put. The remote
+      // ring is then put on the first card, so OK opens it straight away.
+      setTimeout(function () {
+        try {
+          var r = row.getBoundingClientRect();
+          if (r.top < 0 || r.bottom > (window.innerHeight || 0))
+            row.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        } catch (e) { }
+        try {
+          if (window.__un0tvNav && window.__un0tvNav.homeIfNothing)
+            window.__un0tvNav.homeIfNothing();
+        } catch (e) { }
+      }, 250);
     } catch (e) {
       remove();
     } finally {

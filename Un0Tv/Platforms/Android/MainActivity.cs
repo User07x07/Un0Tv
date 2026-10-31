@@ -85,15 +85,10 @@ public class MainActivity : MauiAppCompatActivity
     // closing a sign-in window works.
     public override bool DispatchKeyEvent(KeyEvent? e)
     {
-        // While the sign-in window is up and the on-screen keyboard is showing,
-        // every key belongs to the keyboard.
+        // While the sign-in window is up and the system keyboard is showing,
+        // every key belongs to that window.
         if (TvWebView.IsPopupOpen && TvWebView.KeyboardVisible)
             return base.DispatchKeyEvent(e);
-
-        // The app's own keyboard is up: every key types, moves on the letters or
-        // hides it again. Nothing reaches the page behind it.
-        if (e is not null && e.Action == KeyEventActions.Down && Overlays.KeyboardOpen)
-            return Overlays.HandleKeyboardKey(e.KeyCode);
 
         // The movie control panel is up: the arrows move on it, OK presses, and
         // Left closes it again - the same key that opened it.

@@ -9,6 +9,10 @@ namespace Un0Tv;
 // focus movement, because most of this site's items are plain boxes rather
 // than real buttons and never take focus.
 //
+// Pressing OK on a box the viewer can type in tells the app to open its own
+// on-screen keyboard, and the box is kept as the place the letters go - a TV
+// has no touch screen, so a box alone can never raise Android's keyboard.
+//
 // The highlight is a thin blue outline drawn over the item, not a heavy
 // glowing box, and it is hidden while a movie fills the screen.
 //
@@ -26,13 +30,14 @@ public static class DpadNav
 
   var box = null;        // the highlight
   var cur = null;        // the item it sits on
+  var curIsField = false;// the item is a box the viewer can type in
   var items = null;      // clickable things, with their boxes at build time
   var builtAt = 0;
   var builtSx = 0, builtSy = 0;
   var frame = 0;
 
   // Class names that mark a clickable box on a site built from plain divs.
-  var CLASS_HINT = /(btn|button|card|item|link|tab|chip|tile|option|menu|poster|play|episode|season)/i;
+  var CLASS_HINT = /(btn|button|card|item|link|tab|chip|tile|option|menu|poster|play|episode|season|continue|search|row|title|hero)/i;
 
   function own(el) {
     try { return !!(el && el.getAttribute && el.getAttribute('data-un0tv-own') === '1'); }
@@ -53,9 +58,52 @@ public static class DpadNav
     return true;
   }
 
+  function fieldTag(el) {
+    var tag = (el.tagName || '').toLowerCase();
+    if (tag === 'textarea') return true;
+    if (tag === 'input') {
+      var t = (el.type || 'text').toLowerCase();
+      return t !== 'hidden' && t !== 'checkbox' && t !== 'radio'
+          && t !== 'submit' && t !== 'button' && t !== 'file';
+    }
+    return false;
+  }
+
+  // A box the viewer types a search into. The site draws its search box as a
+  // plain div holding the real input, so the box on its own is not an input
+  // and would never ask for the app's keyboard.
+  function searchy(el) {
+    if (!el) return false;
+    var hint = '';
+    try {
+      hint = ((el.getAttribute('placeholder') || '') + ' '
+            + (el.getAttribute('aria-label') || '') + ' '
+            + (el.getAttribute('name') || '') + ' '
+            + (el.id || '') + ' '
+            + (el.className && el.className.toString ? el.className.toString() : '')).toLowerCase();
+    } catch (e) { hint = ''; }
+    if (hint.indexOf('search') >= 0 || hint.indexOf('find') >= 0) return true;
+    try {
+      if (el.querySelector
+          && el.querySelector('input[type="search"],input[placeholder],input:not([type])'))
+        return true;
+    } catch (e) { }
+    return false;
+  }
+
+  // Anything a viewer types into, whether the site wrapped it or not.
+  function fieldish(el) {
+    if (!el) return false;
+    if (fieldTag(el)) return true;
+    if (el.isContentEditable) return true;
+    return searchy(el);
+  }
+
   // Could a viewer press this?
   function clickable(el) {
     var tag = (el.tagName || '').toLowerCase();
+    // The Continue watching cards are ours, so they can always be pressed.
+    if (el.hasAttribute('data-un0tv-continue')) return true;
     if (tag === 'button' || tag === 'select' || tag === 'textarea' || tag === 'summary') return true;
     if (tag === 'input') {
       var t = (el.type || 'text').toLowerCase();
@@ -75,6 +123,16 @@ public static class DpadNav
     try { cls = (el.className && el.className.toString) ? el.className.toString() : ''; }
     catch (e) { cls = ''; }
     if (cls && CLASS_HINT.test(cls)) return true;
+    // Last resort, so a plain box drawn by the site can still be chosen: the
+    // site marks anything pressable with a pointer cursor, and a box holding
+    // a picture and a line of words reads as a card.
+    if (tag === 'div' || tag === 'li' || tag === 'article' || tag === 'span' || tag === 'section') {
+      if (el.children.length >= 1 && el.children.length <= 4) {
+        var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (el.querySelector('img') && txt.length <= 80) return true;
+      }
+      try { if (getComputedStyle(el).cursor === 'pointer') return true; } catch (e) { }
+    }
     return false;
   }
 
@@ -84,7 +142,12 @@ public static class DpadNav
     var out = [];
     for (var i = 0; i < list.length; i++) {
       var a = list[i], keep = true;
-      var area = a.r.width * a.r.height;
+      // One card is one stop: its picture and its words belong to it.
+      if (a.el.hasAttribute('data-un0tv-continue')) { out.push(a); continue; }
+      var inCard = false;
+      try { inCard = !!a.el.closest('[data-un0tv-continue]'); } catch (e) { inCard = false; }
+      if (inCard) continue;
+      var area = Math.max(1, a.r.width * a.r.height);
       for (var j = 0; j < list.length; j++) {
         if (i === j) continue;
         var b = list[j];
@@ -92,6 +155,8 @@ public static class DpadNav
           if (!a.el.contains(b.el)) continue;
         } catch (e) { continue; }
         var barea = b.r.width * b.r.height;
+        // The inner box covers nearly the whole wrapper: the wrapper is only a
+        // holder, so it goes.
         if (barea >= area * 0.80 && barea <= area * 1.05) { keep = false; break; }
       }
       if (keep) out.push(a);
@@ -139,6 +204,20 @@ public static class DpadNav
   }
 
   function first() {
+    // Where the viewer left off is the first thing the ring should find - the
+    // Continue watching cards. They are looked for on the page itself as well,
+    // because the strip is drawn after the list was last built.
+    try {
+      var card = document.querySelector('[data-un0tv-continue]');
+      if (card) {
+        var rc = rectOf(card);
+        if (usable(rc)) return { el: card, r: rc };
+      }
+    } catch (e) { }
+    for (var c = 0; c < items.length; c++) {
+      if (items[c].el.hasAttribute('data-un0tv-continue'))
+        return items[c];
+    }
     var best = null, bestTop = 1e9, bestLeft = 1e9;
     for (var i = 0; i < items.length; i++) {
       var r = seen(items[i]);
@@ -155,6 +234,9 @@ public static class DpadNav
 
   function draw() {
     if (!cur || !cur.isConnected) { hideBox(); return; }
+    // A box the viewer types a search into must not be outlined: it only needs
+    // the keys, and the outline over it looks like a fault.
+    if (curIsField) { hideBox(); return; }
     var r = rectOf(cur);
     if (!r || r.width < 4 || r.height < 4) { hideBox(); return; }
     if (!box) {
@@ -191,13 +273,36 @@ public static class DpadNav
     } catch (e) { }
   }
 
+  // Tell the app the ring is on a box the viewer can type in, so it knows a
+  // box is waiting for letters.
+  function sayField(on) {
+    try {
+      if (on === curIsField) return;
+      curIsField = on;
+    } catch (e) { }
+  }
+
+  // Has the viewer moved the ring at all yet? The Continue cards only take the
+  // ring on their own while nothing has been chosen.
+  var moved = false;
+
   function setCur(it) {
     cur = it.el;
     draw();
     reveal(cur);
+    sayField(fieldish(cur));
   }
 
   function move(dx, dy) {
+    // The first arrow press on a search box is the one that clears it: the box
+    // changes nothing on screen, so Down would look like a dead button.
+    if (cur && curIsField && cur.isConnected) {
+      curIsField = false;
+      moved = true;
+      draw();
+      return;
+    }
+    moved = true;
     ensure();
     if (!items || !items.length) return;
     if (!cur || !cur.isConnected) cur = null;
@@ -237,14 +342,55 @@ public static class DpadNav
     try { el.dispatchEvent(new Ctor(name, opts)); } catch (e) { }
   }
 
+  // A field: the TV has no touch screen, so the app's own keyboard is asked
+  // for and the letters are sent into this box (see FieldInput / the app's
+  // keyboard panel).
+  function openField(el) {
+    try {
+      cur = el;
+      curIsField = true;
+      draw();
+      // The site's search box is a plain box holding the real input, so the
+      // input itself is what has to take the letters. FieldInput finds it.
+      var took = false;
+      try {
+        if (window.__un0tvField && window.__un0tvField.focusBest)
+          took = window.__un0tvField.focusBest() === true;
+      } catch (e) { }
+      if (!took) el.focus({ preventScroll: true });
+    } catch (e) { }
+    // The app's own keyboard, raised on OK. A TV has no touch screen, so the
+    // box alone can never bring up Android's keyboard.
+    try {
+      if (window.Un0TvNative && window.Un0TvNative.openKeyboard)
+        window.Un0TvNative.openKeyboard();
+    } catch (e) { }
+  }
+
+  // The site's search box is a plain box, so OK on it must not also press the
+  // box: that would open the site's own search page and hide the keys.
+  function searchBox(el) {
+    if (!el) return false;
+    if (fieldTag(el) || el.isContentEditable) return true;
+    return searchy(el);
+  }
+
   function activate() {
     ensure();
+    // Remember that the viewer just pressed OK, so a box that only takes
+    // typing after a press knows it was meant to be typed in.
+    try { window.__un0tvActedAt = Date.now(); } catch (e) { }
     if (!cur || !cur.isConnected) {
       var f = first();
       if (!f) return;
       setCur(f);
       return;
     }
+
+    if (curIsField || fieldish(cur)) { openField(cur); return; }
+
+    if (searchBox(cur)) { openField(cur); return; }
+
     try { cur.focus({ preventScroll: true }); } catch (e) { }
 
     var tag = (cur.tagName || '').toLowerCase();
@@ -274,7 +420,37 @@ public static class DpadNav
   window.__un0tvNav = {
     move: function (dx, dy) { try { move(dx, dy); } catch (e) { } },
     activate: function () { try { activate(); } catch (e) { } },
-    clear: function () { cur = null; hideBox(); }
+    // The app's keyboard asks for the box once more when it types, because the
+    // page may have moved under the outline in the meantime.
+    refocus: function () {
+      // The box the letters go into, not the box around it: the site's search
+      // is a plain div holding the real input.
+      try {
+        if (window.__un0tvField && window.__un0tvField.focusBest)
+          if (window.__un0tvField.focusBest() === true) return;
+      } catch (e) { }
+      try {
+        if (cur && cur.isConnected && (curIsField || fieldish(cur)))
+          cur.focus({ preventScroll: true });
+      } catch (e) { }
+    },
+    // The Continue strip is drawn after the page has settled, so it asks the
+    // ring to move onto the first card once - and only while the viewer has not
+    // chosen anything yet, so their own moving around is left alone.
+    homeIfNothing: function () {
+      try {
+        if (moved) return;
+        if (cur && cur.isConnected && cur.hasAttribute
+            && cur.hasAttribute('data-un0tv-continue')) return;
+        ensure();
+        var f = first();
+        if (f) setCur(f);
+      } catch (e) { }
+    },
+    // The item the ring is on, so the typing script can look inside it for the
+    // site's real search input.
+    current: function () { return cur; },
+    clear: function () { cur = null; curIsField = false; hideBox(); }
   };
 
   window.addEventListener('scroll', follow, true);
