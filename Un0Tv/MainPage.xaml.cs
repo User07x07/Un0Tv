@@ -5,7 +5,7 @@ namespace Un0Tv;
 
 public partial class MainPage : ContentPage
 {
-    private const string SiteUrl = "https://secondframe.netlify.app/";
+    internal const string SiteUrl = "https://secondframe.netlify.app/";
 
     // What the switches were set to last time. Kept on the TV so a viewer does
     // not have to set them again on every start.
@@ -99,11 +99,17 @@ public partial class MainPage : ContentPage
         if (_siteStarted)
             return;
 
+        // Always on: the DNS filter and Private DNS are switched on here, with
+        // no question asked of the viewer.
+        EnsureVpnRunning();
+        _dnsApplied = TryApplyPrivateDns(DnsPresets.Current.Host);
+
         ActivityPanel.IsVisible = false;
         DnsPanel.IsVisible = false;
         HomePanel.IsVisible = true;
         ListProgress.IsVisible = false;
         DrawLayers();
+        DrawContinue();
 
         StartBeat();
 
@@ -128,7 +134,7 @@ public partial class MainPage : ContentPage
         var protectedNow = _filterOn;
 
         ShieldGlyph.Text = protectedNow ? "\u2713" : "\u2715";
-        ShieldGlyph.TextColor = Color.FromArgb(protectedNow ? "#4CD07D" : "#F0736A");
+        ShieldGlyph.TextColor = Color.FromArgb(protectedNow ? "#34D399" : "#F0736A");
         ShieldRing.Stroke = Color.FromArgb(protectedNow ? "#255C3A" : "#5C2525");
         ShieldState.Text = protectedNow ? "Protected" : "Not protected";
         ShieldState.TextColor = Color.FromArgb(protectedNow ? "#FFFFFF" : "#F0736A");
@@ -144,7 +150,7 @@ public partial class MainPage : ContentPage
 
         // ---- Layer 1: the filter ----
         BtnFilter.Text = _filterOn ? "ON" : "OFF";
-        BtnFilter.BackgroundColor = Color.FromArgb(_filterOn ? "#4CD07D" : "#3A3A4E");
+        BtnFilter.BackgroundColor = Color.FromArgb(_filterOn ? "#34D399" : "#3A3A4E");
         BtnFilter.TextColor = Color.FromArgb(_filterOn ? "#08210F" : "#C9C9DE");
         LayerFilterInfo.Text = _filterOn
             ? "Every request checked before it loads"
@@ -154,8 +160,8 @@ public partial class MainPage : ContentPage
         if (listOn)
         {
             BtnList.Text = "Update";
-            BtnList.BackgroundColor = Color.FromArgb("#232334");
-            BtnList.TextColor = Color.FromArgb("#DCDCF0");
+            BtnList.BackgroundColor = Color.FromArgb("#162036");
+            BtnList.TextColor = Color.FromArgb("#E6F1FF");
 
             var when = Hagezi.SavedAt;
             LayerListInfo.Text = when is null
@@ -165,16 +171,18 @@ public partial class MainPage : ContentPage
         else
         {
             BtnList.Text = "Get";
-            BtnList.BackgroundColor = Color.FromArgb("#8F80F5");
+            BtnList.BackgroundColor = Color.FromArgb("#8B5CF6");
             BtnList.TextColor = Colors.White;
             LayerListInfo.Text = "Not downloaded yet \u00b7 tap Get to fetch it";
         }
 
         // ---- Layer 3: Private DNS ----
         BtnDns.Text = "Open";
-        BtnDns.BackgroundColor = Color.FromArgb("#232334");
-        BtnDns.TextColor = Color.FromArgb("#DCDCF0");
-        LayerDnsInfo.Text = "Blocks in other apps too, even with Un0Tv closed";
+        BtnDns.BackgroundColor = Color.FromArgb("#162036");
+        BtnDns.TextColor = Color.FromArgb("#E6F1FF");
+        LayerDnsInfo.Text = _dnsApplied
+            ? $"On \u00b7 {DnsPresets.Current.Host}"
+            : "Off \u00b7 press Open to turn it on";
 
         HomeHint.Text = _filterOn
             ? "Arrows move, OK presses. Filtering is on."
@@ -186,8 +194,8 @@ public partial class MainPage : ContentPage
     private void DrawActivityHeader()
     {
         BtnRowsFilter.Text = _blockedOnly ? "Blocked" : "All";
-        BtnRowsFilter.BackgroundColor = Color.FromArgb(_blockedOnly ? "#3A2E5C" : "#232334");
-        BtnRowsFilter.TextColor = Color.FromArgb(_blockedOnly ? "#C7B8FF" : "#DCDCF0");
+        BtnRowsFilter.BackgroundColor = Color.FromArgb(_blockedOnly ? "#3A2E5C" : "#162036");
+        BtnRowsFilter.TextColor = Color.FromArgb(_blockedOnly ? "#C7B8FF" : "#E6F1FF");
 
         AdStats.Apply(_blockedOnly, _visibleRows);
         ActivityEmpty.IsVisible = _visibleRows.Count == 0;
@@ -272,6 +280,50 @@ public partial class MainPage : ContentPage
 
     private bool _busy;
 
+    // True once the chosen Private DNS name is switched on.
+    private bool _dnsApplied;
+
+    // The VPN filter is asked for once per run, not on every visit to the home screen.
+    private static bool _vpnAutoTried;
+
+    // Starts the whole-TV DNS filter if it is not running yet. Android may show
+    // its own one-time permission box; that box belongs to the system.
+    private static void EnsureVpnRunning()
+    {
+        if (DnsSettings.VpnRunning || _vpnAutoTried)
+            return;
+
+        _vpnAutoTried = true;
+#if ANDROID
+        MainActivity.Current?.StartVpnFlow();
+#endif
+    }
+
+    // Switches the TV's Private DNS to the given name, with no question asked.
+    // Android allows this only to apps granted the secure-settings permission;
+    // for any other app the change is refused and this returns false.
+    private static bool TryApplyPrivateDns(string host)
+    {
+#if ANDROID
+        try
+        {
+            var resolver = Android.App.Application.Context.ContentResolver;
+            if (resolver is null)
+                return false;
+
+            var modeOk = Android.Provider.Settings.Global.PutString(resolver, "private_dns_mode", "hostname");
+            var hostOk = Android.Provider.Settings.Global.PutString(resolver, "private_dns_specifier", host);
+            return modeOk && hostOk;
+        }
+        catch
+        {
+            return false;
+        }
+#else
+        return false;
+#endif
+    }
+
     private async Task FetchListAsync()
     {
         _busy = true;
@@ -315,30 +367,31 @@ public partial class MainPage : ContentPage
         }
     }
 
-    // Layer 3. The TV's own Private DNS lives in Android's settings, which is
-    // the one thing an app cannot switch on for you - so this opens that page.
-    private async void OnOpenDnsSettingsClicked(object? sender, EventArgs e)
+    // Layer 3. Turns Private DNS on for the chosen name with no question to the
+    // viewer. Only if Android refuses the switch does it open the TV's network
+    // page, so the viewer can flip it there in one press.
+    private void OnOpenDnsSettingsClicked(object? sender, EventArgs e)
     {
+        var host = DnsPresets.Current.Host;
+        _dnsApplied = TryApplyPrivateDns(host);
+
+        if (_dnsApplied)
+        {
+            DnsPresetInfo.Text = $"Private DNS is on: {host}";
+            DrawLayers();
+            return;
+        }
+
+#if ANDROID
         try
         {
-#if ANDROID
-            // Android 9+ sends Private DNS under this settings screen. Makers
-            // move it, so the general settings page is the fallback.
             var intent = new Android.Content.Intent(Android.Provider.Settings.ActionSettings);
             intent.AddFlags(Android.Content.ActivityFlags.NewTask);
             Android.App.Application.Context.StartActivity(intent);
-#else
-            await DisplayAlert("Private DNS",
-                $"Open the TV's network settings and set Private DNS to {DnsPresets.Current.Host}.",
-                "Got it");
+        }
+        catch { }
 #endif
-        }
-        catch
-        {
-            await DisplayAlert("Private DNS",
-                $"Open the TV's network settings and set Private DNS to {DnsPresets.Current.Host}.",
-                "Got it");
-        }
+        DnsPresetInfo.Text = $"Android blocked the switch. In the page that opens, set Private DNS to {host}.";
     }
 
     // Opens the presets screen from the Private DNS row on the home screen.
@@ -360,6 +413,50 @@ public partial class MainPage : ContentPage
 
     private readonly List<Button> _presetButtons = new();
 
+    // The Continue watching cards, rebuilt each time the home screen opens.
+    private readonly List<Button> _continueButtons = new();
+
+    // Draws the Continue watching row from the saved progress.
+    private void DrawContinue()
+    {
+        var items = WatchProgress.Recent(8);
+
+        ContinueList.Children.Clear();
+        _continueButtons.Clear();
+        ContinueSection.IsVisible = items.Count > 0;
+
+        foreach (var item in items)
+        {
+            var picked = item;
+            var button = new Button
+            {
+                Text = $"{picked.Label}\n{picked.Progress}",
+                FontSize = 15,
+                CornerRadius = 12,
+                Padding = new Thickness(18, 10),
+                WidthRequest = 260,
+                BackgroundColor = Color.FromArgb("#0F1628"),
+                TextColor = Color.FromArgb("#EDEDF7")
+            };
+            button.Clicked += (_, _) => ResumeTitle(picked);
+            _continueButtons.Add(button);
+            ContinueList.Children.Add(button);
+        }
+    }
+
+    // Opens the page the title was watched on. The player then resumes from the
+    // saved spot once it reports its time.
+    private void ResumeTitle(WatchItem item)
+    {
+        _siteStarted = true;
+        AdStats.IsWatched = false;
+        HomePanel.IsVisible = false;
+        ActivityPanel.IsVisible = false;
+        StopBeat();
+        AttachNative();
+        Browser.Source = string.IsNullOrEmpty(item.Url) ? SiteUrl : item.Url;
+    }
+
     // Builds one button per preset, once, above the two fixed buttons.
     private void BuildPresets()
     {
@@ -375,7 +472,7 @@ public partial class MainPage : ContentPage
                 CornerRadius = 12,
                 Padding = new Thickness(22, 12),
                 HorizontalOptions = LayoutOptions.Start,
-                BackgroundColor = Color.FromArgb("#15151F"),
+                BackgroundColor = Color.FromArgb("#0F1628"),
                 TextColor = Color.FromArgb("#EDEDF7")
             };
             button.Clicked += (_, _) => PickPreset(index);
@@ -398,17 +495,18 @@ public partial class MainPage : ContentPage
         DnsPresetInfo.Text = $"Chosen: {cur.Host} \u00b7 {cur.Note}";
     }
 
-    // Chooses a preset and copies its name, so it can be pasted into the TV's
-    // Private DNS page.
-    private async void PickPreset(int index)
+    // Chooses a preset and switches Private DNS to it straight away.
+    private void PickPreset(int index)
     {
         DnsPresets.SelectedIndex = index;
         DrawPresets();
 
         var host = DnsPresets.Current.Host;
-        try { await Clipboard.Default.SetTextAsync(host); } catch { }
+        _dnsApplied = TryApplyPrivateDns(host);
 
-        DnsPresetInfo.Text = $"{host} copied. Press Open the TV's Private DNS page and paste it.";
+        DnsPresetInfo.Text = _dnsApplied
+            ? $"Private DNS is on: {host}"
+            : $"{host} chosen. Press Turn on Private DNS to switch it on.";
     }
 
     // Turns the whole-TV VPN filter on or off. Android asks for permission the
@@ -472,6 +570,7 @@ public partial class MainPage : ContentPage
         HomePanel.IsVisible = false;
         ActivityPanel.IsVisible = false;
         StopBeat();
+        AttachNative();
         Browser.Source = SiteUrl;
     }
 
@@ -494,6 +593,8 @@ public partial class MainPage : ContentPage
             order.Add(BtnFilter);
             order.Add(BtnList);
             order.Add(BtnDns);
+            foreach (var b in _continueButtons)
+                order.Add(b);
             order.Add(BtnActivity);
             order.Add(BtnStart);
         }
@@ -559,11 +660,11 @@ public partial class MainPage : ContentPage
             // Site failed to load â€” show a bare error so you're not staring at a black screen
             Browser.Source = new HtmlWebViewSource
             {
-                Html = $@"<html><body style='background:#101014;color:#E8E8F0;
+                Html = $@"<html><body style='background:radial-gradient(circle at top,#14204A,#05070D 70%);color:#E6F1FF;
                          font-family:sans-serif;display:flex;align-items:center;
                          justify-content:center;height:100vh;margin:0'>
                          <div style='text-align:center'>
-                           <h2>couldn't reach secondframe</h2>
+                           <h2 style='color:#67E8F9;letter-spacing:1px'>couldn't reach secondframe</h2>
                            <p style='color:#8A8AA0'>{e.Result}</p>
                          </div></body></html>"
             };

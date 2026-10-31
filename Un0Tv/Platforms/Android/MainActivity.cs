@@ -116,6 +116,27 @@ public class MainActivity : MauiAppCompatActivity
             return base.DispatchKeyEvent(e);
         }
 
+        // The remote's media keys drive the movie player: play, pause, the
+        // play/pause toggle, forward 10 seconds and back 10 seconds.
+        if (e is not null && e.Action == KeyEventActions.Down)
+        {
+            var playerAction = e.KeyCode switch
+            {
+                AndroidKeycode.MediaPlay => "play",
+                AndroidKeycode.MediaPause => "pause",
+                AndroidKeycode.MediaPlayPause => "toggle",
+                AndroidKeycode.MediaFastForward => "forward",
+                AndroidKeycode.MediaRewind => "back",
+                _ => null,
+            };
+
+            if (playerAction is not null)
+            {
+                TvWebView.PlayerCommand(playerAction);
+                return true;
+            }
+        }
+
         // A movie filling the screen: its own player controls own the arrows.
         // Back still has to leave fullscreen, so that one key is handled below.
         if (TvWebView.IsFullscreen && e is not null && e.KeyCode != AndroidKeycode.Back)

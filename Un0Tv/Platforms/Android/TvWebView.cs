@@ -15,6 +15,7 @@ internal static class TvWebView
 {
     private static TvChromeClient? _client;
     private static TvWebViewClient? _viewClient;
+    private static ProgressBridge? _progress;
 
     public static AndroidWebView? Main { get; private set; }
     public static AndroidWebView? Popup { get; private set; }
@@ -42,6 +43,10 @@ internal static class TvWebView
         // own client while the view is being created.
         _viewClient ??= new TvWebViewClient(handler);
         view.SetWebViewClient(_viewClient);
+
+        // Lets the site's page hand its watch progress to the app (see ProgressBridge).
+        // Only the main view gets it, not sign-in pop-ups.
+        view.AddJavascriptInterface(_progress ??= new ProgressBridge(), "Un0TvNative");
 
         Apply(view);
     }
@@ -121,6 +126,13 @@ internal static class TvWebView
                 AudioAutoplay.Js,
                 new[] { "*" });
 
+            // Movie player controls: play, pause, forward and back from the
+            // remote's media keys, sent into the player's frame.
+            AndroidX.WebKit.WebViewCompat.AddDocumentStartJavaScript(
+                view,
+                PlayerControl.Js,
+                new[] { "*" });
+
             // D-pad navigation: the site has no TV navigation of its own, so
             // the page needs a highlight the arrows can move.
             AndroidX.WebKit.WebViewCompat.AddDocumentStartJavaScript(
@@ -158,6 +170,18 @@ internal static class TvWebView
 
     // Leaves the fullscreen video and drops back to the page.
     public static void ExitFullscreen() => _client?.EndFullscreen();
+
+    // Sends one movie command (play, pause, toggle, forward or back) to the
+    // player script on the page. The action is always one of those fixed words.
+    public static void PlayerCommand(string action)
+    {
+        var view = Main;
+        if (view is null)
+            return;
+
+        view.EvaluateJavascript(
+            "if(window.__un0tvPlayer){window.__un0tvPlayer." + action + "();}", null);
+    }
 
     public static void ClosePopup()
         => _client?.ClosePopup();

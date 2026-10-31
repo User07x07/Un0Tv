@@ -23,7 +23,7 @@
 		     ============================================================ -->
 		<Grid x:Name="HomePanel"
               IsVisible="False"
-              BackgroundColor="#0D0D12"
+              BackgroundColor="#070B16"
               ColumnDefinitions="2*,3*"
               ColumnSpacing="52"
               Padding="52,40">
@@ -39,7 +39,7 @@
 				<Border x:Name="ShieldRing"
                         WidthRequest="150"
                         HeightRequest="150"
-                        BackgroundColor="#15151F"
+                        BackgroundColor="#0F1628"
                         StrokeThickness="3"
                         Stroke="#2C2C40"
                         HorizontalOptions="Center"
@@ -50,7 +50,7 @@
 					<Label x:Name="ShieldGlyph"
                            Text="&#x2713;"
                            FontSize="70"
-                           TextColor="#4CD07D"
+                           TextColor="#34D399"
                            HorizontalOptions="Center"
                            VerticalOptions="Center" />
 				</Border>
@@ -73,7 +73,7 @@
                        Text="0"
                        FontSize="58"
                        FontAttributes="Bold"
-                       TextColor="#8F80F5"
+                       TextColor="#A78BFA"
                        HorizontalTextAlignment="Center"
                        Margin="0,18,0,0" />
 
@@ -100,8 +100,8 @@
                        TextColor="#C9C9DE" />
 
 				<!-- Layer 1: the filter itself -->
-				<Border BackgroundColor="#15151F"
-                        Stroke="#26263A"
+				<Border BackgroundColor="#0F1628"
+                        Stroke="#1E3A5F"
                         StrokeThickness="1"
                         Padding="20,16">
 					<Border.StrokeShape>
@@ -120,7 +120,7 @@
 							<Label Text="A"
                                    FontSize="21"
                                    FontAttributes="Bold"
-                                   TextColor="#8F80F5"
+                                   TextColor="#A78BFA"
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center" />
 						</Border>
@@ -151,8 +151,8 @@
 				</Border>
 
 				<!-- Layer 2: the big public block list -->
-				<Border BackgroundColor="#15151F"
-                        Stroke="#26263A"
+				<Border BackgroundColor="#0F1628"
+                        Stroke="#1E3A5F"
                         StrokeThickness="1"
                         Padding="20,16">
 					<Border.StrokeShape>
@@ -171,7 +171,7 @@
 							<Label Text="H"
                                    FontSize="21"
                                    FontAttributes="Bold"
-                                   TextColor="#4CD07D"
+                                   TextColor="#34D399"
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center" />
 						</Border>
@@ -203,8 +203,8 @@
 
 				<!-- Layer 3: the TV's own Private DNS, which works even with
 				     the app closed. -->
-				<Border BackgroundColor="#15151F"
-                        Stroke="#26263A"
+				<Border BackgroundColor="#0F1628"
+                        Stroke="#1E3A5F"
                         StrokeThickness="1"
                         Padding="20,16">
 					<Border.StrokeShape>
@@ -255,9 +255,23 @@
 
 				<ProgressBar x:Name="ListProgress"
                              IsVisible="False"
-                             ProgressColor="#8F80F5"
+                             ProgressColor="#22D3EE"
                              HeightRequest="5"
                              Margin="0,4" />
+
+				<!-- Continue watching: titles the viewer left part way through. Hidden
+				     until there is one. -->
+				<VerticalStackLayout x:Name="ContinueSection"
+                                     IsVisible="False"
+                                     Spacing="8">
+					<Label Text="Continue watching"
+                           FontSize="19"
+                           FontAttributes="Bold"
+                           TextColor="#C9C9DE" />
+					<ScrollView Orientation="Horizontal">
+						<HorizontalStackLayout x:Name="ContinueList" Spacing="12" />
+					</ScrollView>
+				</VerticalStackLayout>
 
 				<Label x:Name="HomeHint"
                        Text="Arrows move, OK presses. Filtering starts with the site."
@@ -269,8 +283,8 @@
 					<Button x:Name="BtnActivity"
                             Text="Activity"
                             Clicked="OnActivityClicked"
-                            BackgroundColor="#232334"
-                            TextColor="#DCDCF0"
+                            BackgroundColor="#162036"
+                            TextColor="#E6F1FF"
                             FontSize="18"
                             Padding="28,14"
                             CornerRadius="12" />
@@ -278,7 +292,7 @@
 					<Button x:Name="BtnStart"
                             Text="Start watching"
                             Clicked="OnStartClicked"
-                            BackgroundColor="#1F6FEB"
+                            BackgroundColor="#06B6D4"
                             TextColor="White"
                             FontSize="18"
                             FontAttributes="Bold"
@@ -294,7 +308,7 @@
 		     ============================================================ -->
 		<Grid x:Name="ActivityPanel"
               IsVisible="False"
-              BackgroundColor="#0D0D12"
+              BackgroundColor="#070B16"
               RowDefinitions="Auto,*"
               RowSpacing="18"
               Padding="52,38">
@@ -304,8 +318,8 @@
                         Grid.Column="0"
                         Text="&#x2190; Home"
                         Clicked="OnBackToHomeClicked"
-                        BackgroundColor="#232334"
-                        TextColor="#DCDCF0"
+                        BackgroundColor="#162036"
+                        TextColor="#E6F1FF"
                         FontSize="17"
                         Padding="22,12"
                         CornerRadius="12" />
@@ -321,8 +335,8 @@
                         Grid.Column="2"
                         Text="All"
                         Clicked="OnRowsFilterClicked"
-                        BackgroundColor="#232334"
-                        TextColor="#DCDCF0"
+                        BackgroundColor="#162036"
+                        TextColor="#E6F1FF"
                         FontSize="17"
                         Padding="22,12"
                         CornerRadius="12" />
@@ -343,7 +357,7 @@
 				<CollectionView.ItemTemplate>
 					<DataTemplate x:DataType="local:LogEntry">
 
-						<Border BackgroundColor="#15151F"
+						<Border BackgroundColor="#0F1628"
                                 Stroke="#222234"
                                 StrokeThickness="1"
                                 Padding="18,12"
@@ -399,7 +413,7 @@
 		     ============================================================ -->
 		<Grid x:Name="DnsPanel"
               IsVisible="False"
-              BackgroundColor="#0D0D12"
+              BackgroundColor="#070B16"
               RowDefinitions="Auto,Auto,*"
               RowSpacing="18"
               Padding="52,38">
@@ -409,8 +423,8 @@
                         Grid.Column="0"
                         Text="&#x2190; Home"
                         Clicked="OnDnsBackClicked"
-                        BackgroundColor="#232334"
-                        TextColor="#DCDCF0"
+                        BackgroundColor="#162036"
+                        TextColor="#E6F1FF"
                         FontSize="17"
                         Padding="22,12"
                         CornerRadius="12" />
@@ -436,7 +450,7 @@
 					<Button x:Name="BtnVpn"
                             Text="Filter every app on this TV (VPN)"
                             Clicked="OnVpnClicked"
-                            BackgroundColor="#1F6FEB"
+                            BackgroundColor="#06B6D4"
                             TextColor="White"
                             FontSize="17"
                             FontAttributes="Bold"
@@ -444,10 +458,10 @@
                             Margin="0,14,0,0" />
 
 					<Button x:Name="BtnOpenDns"
-                            Text="Open the TV's Private DNS page"
+                            Text="Turn on Private DNS"
                             Clicked="OnOpenDnsSettingsClicked"
-                            BackgroundColor="#232334"
-                            TextColor="#DCDCF0"
+                            BackgroundColor="#162036"
+                            TextColor="#E6F1FF"
                             FontSize="17"
                             CornerRadius="12" />
 				</VerticalStackLayout>
