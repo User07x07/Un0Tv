@@ -60,6 +60,11 @@ internal static class TvWebView
         settings.SetSupportMultipleWindows(true);
         settings.JavaScriptCanOpenWindowsAutomatically = true;
 
+        // No white paper background behind the page: while the site paints or
+        // swaps pages, a white view would flash through the gaps. Black matches
+        // the app, so nothing bright ever shows behind it.
+        view.SetBackgroundColor(Android.Graphics.Color.Black);
+
         // Lets the video start on its own WITH sound. Without this, Android only
         // allows a sound-on video to start after a real press, so players start
         // muted - which is why the picture came up but no sound did.
@@ -138,6 +143,20 @@ internal static class TvWebView
             AndroidX.WebKit.WebViewCompat.AddDocumentStartJavaScript(
                 view,
                 DpadNav.Js,
+                new[] { "*" });
+
+            // Typing into the site's search box from the app's on-screen
+            // keyboard: the page remembers which box the remote is on.
+            AndroidX.WebKit.WebViewCompat.AddDocumentStartJavaScript(
+                view,
+                FieldInput.Js,
+                new[] { "*" });
+
+            // Continue watching inside the site's own library, drawn from the
+            // progress the player has already saved.
+            AndroidX.WebKit.WebViewCompat.AddDocumentStartJavaScript(
+                view,
+                ContinueNav.Js,
                 new[] { "*" });
         }
         catch

@@ -7,6 +7,41 @@
              Padding="0"
              Shell.NavBarIsVisible="False">
 
+	<ContentPage.Resources>
+
+		<!-- One look for the whole app: Segoe UI on every label, and every button
+		     drawn as a square with a thick cyan ring while the remote sits on it,
+		     so a viewer can always tell which button OK will press. -->
+		<Style TargetType="Label">
+			<Setter Property="FontFamily" Value="Segoe UI" />
+		</Style>
+
+		<Style TargetType="Button">
+			<Setter Property="FontFamily" Value="Segoe UI" />
+			<Setter Property="CornerRadius" Value="4" />
+			<Setter Property="BorderWidth" Value="0" />
+			<Setter Property="BorderColor" Value="Transparent" />
+			<Setter Property="VisualStateManager.VisualStateGroups">
+				<VisualStateGroupList>
+					<VisualStateGroup Name="CommonStates">
+						<VisualState Name="Normal">
+							<VisualState.Setters>
+								<Setter Property="BorderWidth" Value="0" />
+								<Setter Property="BorderColor" Value="Transparent" />
+							</VisualState.Setters>
+						</VisualState>
+						<VisualState Name="Focused">
+							<VisualState.Setters>
+								<Setter Property="BorderWidth" Value="4" />
+								<Setter Property="BorderColor" Value="#22D3EE" />
+							</VisualState.Setters>
+						</VisualState>
+					</VisualStateGroup>
+				</VisualStateGroupList>
+			</Setter>
+		</Style>
+	</ContentPage.Resources>
+
 	<Grid>
 
 		<!-- The site is only started once the home screen below has finished,
@@ -17,39 +52,37 @@
 
 		<!-- ============================================================
 		     Home: the protection dashboard.
-		     Left: the shield, whether we are protected, and how many
-		     lookups were blocked today.
-		     Right: the protection layers, each with its own switch.
+		     Left: the shield and whether we are protected.
+		     Right: the protection layers, each with its own square button.
 		     ============================================================ -->
 		<Grid x:Name="HomePanel"
               IsVisible="False"
               BackgroundColor="#070B16"
               ColumnDefinitions="2*,3*"
-              ColumnSpacing="52"
-              Padding="52,40">
+              ColumnSpacing="40"
+              Padding="44,24">
 
 			<!-- Left column: status -->
 			<VerticalStackLayout Grid.Column="0"
                                  VerticalOptions="Center"
                                  HorizontalOptions="Center"
-                                 Spacing="4">
+                                 Spacing="10">
 
 				<!-- The status badge. Green tick when everything is on,
 				     red cross when the filter is off. -->
 				<Border x:Name="ShieldRing"
-                        WidthRequest="150"
-                        HeightRequest="150"
+                        WidthRequest="96"
+                        HeightRequest="96"
                         BackgroundColor="#0F1628"
                         StrokeThickness="3"
                         Stroke="#2C2C40"
-                        HorizontalOptions="Center"
-                        Margin="0,0,0,14">
+                        HorizontalOptions="Center">
 					<Border.StrokeShape>
-						<RoundRectangle CornerRadius="75" />
+						<RoundRectangle CornerRadius="48" />
 					</Border.StrokeShape>
 					<Label x:Name="ShieldGlyph"
                            Text="&#x2713;"
-                           FontSize="70"
+                           FontSize="42"
                            TextColor="#34D399"
                            HorizontalOptions="Center"
                            VerticalOptions="Center" />
@@ -57,45 +90,27 @@
 
 				<Label x:Name="ShieldState"
                        Text="Protected"
-                       FontSize="34"
+                       FontSize="26"
                        FontAttributes="Bold"
                        TextColor="White"
                        HorizontalTextAlignment="Center" />
 
-				<Label x:Name="LayerCount"
-                       Text="3 of 3 layers on"
-                       FontSize="17"
+				<!-- What the viewer has to do before watching. -->
+				<Label Text="Activate Parameters Before Proceeding to Ensure Smooth Stream"
+                       FontSize="15"
                        TextColor="#9A9AB2"
-                       HorizontalTextAlignment="Center" />
-
-				<!-- The day's figure, the way Repel shows it. -->
-				<Label x:Name="BlockedToday"
-                       Text="0"
-                       FontSize="58"
-                       FontAttributes="Bold"
-                       TextColor="#A78BFA"
-                       HorizontalTextAlignment="Center"
-                       Margin="0,18,0,0" />
-
-				<Label Text="blocked today"
-                       FontSize="16"
-                       TextColor="#9A9AB2"
-                       HorizontalTextAlignment="Center" />
-
-				<Label x:Name="ChecksToday"
-                       Text="No lookups yet"
-                       FontSize="14"
-                       TextColor="#6C6C84"
+                       LineBreakMode="WordWrap"
+                       MaximumWidthRequest="300"
                        HorizontalTextAlignment="Center" />
 			</VerticalStackLayout>
 
 			<!-- Right column: the layers -->
 			<VerticalStackLayout Grid.Column="1"
                                  VerticalOptions="Center"
-                                 Spacing="14">
+                                 Spacing="8">
 
 				<Label Text="Protection layers"
-                       FontSize="19"
+                       FontSize="16"
                        FontAttributes="Bold"
                        TextColor="#C9C9DE" />
 
@@ -103,22 +118,22 @@
 				<Border BackgroundColor="#0F1628"
                         Stroke="#1E3A5F"
                         StrokeThickness="1"
-                        Padding="20,16">
+                        Padding="16,8">
 					<Border.StrokeShape>
-						<RoundRectangle CornerRadius="16" />
+						<RoundRectangle CornerRadius="10" />
 					</Border.StrokeShape>
 
 					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
 						<Border Grid.Column="0"
                                 BackgroundColor="#211E3A"
-                                WidthRequest="46"
-                                HeightRequest="46"
+                                WidthRequest="40"
+                                HeightRequest="40"
                                 VerticalOptions="Center">
 							<Border.StrokeShape>
-								<RoundRectangle CornerRadius="23" />
+								<RoundRectangle CornerRadius="8" />
 							</Border.StrokeShape>
 							<Label Text="A"
-                                   FontSize="21"
+                                   FontSize="18"
                                    FontAttributes="Bold"
                                    TextColor="#A78BFA"
                                    HorizontalOptions="Center"
@@ -127,12 +142,12 @@
 
 						<VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
 							<Label Text="Ad and tracker filter"
-                                   FontSize="21"
+                                   FontSize="18"
                                    FontAttributes="Bold"
                                    TextColor="White" />
 							<Label x:Name="LayerFilterInfo"
                                    Text="Filtering with the built-in rules"
-                                   FontSize="14"
+                                   FontSize="12"
                                    TextColor="#8A8AA4" />
 						</VerticalStackLayout>
 
@@ -143,9 +158,10 @@
                                 FontSize="17"
                                 FontAttributes="Bold"
                                 Padding="0"
-                                WidthRequest="104"
-                                HeightRequest="48"
-                                CornerRadius="24"
+                                WidthRequest="96"
+                                HeightRequest="40"
+                                CornerRadius="4"
+                                BorderWidth="0"
                                 VerticalOptions="Center" />
 					</Grid>
 				</Border>
@@ -154,22 +170,22 @@
 				<Border BackgroundColor="#0F1628"
                         Stroke="#1E3A5F"
                         StrokeThickness="1"
-                        Padding="20,16">
+                        Padding="16,8">
 					<Border.StrokeShape>
-						<RoundRectangle CornerRadius="16" />
+						<RoundRectangle CornerRadius="10" />
 					</Border.StrokeShape>
 
 					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
 						<Border Grid.Column="0"
                                 BackgroundColor="#162A22"
-                                WidthRequest="46"
-                                HeightRequest="46"
+                                WidthRequest="40"
+                                HeightRequest="40"
                                 VerticalOptions="Center">
 							<Border.StrokeShape>
-								<RoundRectangle CornerRadius="23" />
+								<RoundRectangle CornerRadius="8" />
 							</Border.StrokeShape>
 							<Label Text="H"
-                                   FontSize="21"
+                                   FontSize="18"
                                    FontAttributes="Bold"
                                    TextColor="#34D399"
                                    HorizontalOptions="Center"
@@ -178,12 +194,12 @@
 
 						<VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
 							<Label Text="HaGeZi Multi PRO list"
-                                   FontSize="21"
+                                   FontSize="18"
                                    FontAttributes="Bold"
                                    TextColor="White" />
 							<Label x:Name="LayerListInfo"
                                    Text="Not downloaded yet"
-                                   FontSize="14"
+                                   FontSize="12"
                                    TextColor="#8A8AA4" />
 						</VerticalStackLayout>
 
@@ -194,9 +210,10 @@
                                 FontSize="15"
                                 FontAttributes="Bold"
                                 Padding="0"
-                                WidthRequest="104"
-                                HeightRequest="48"
-                                CornerRadius="24"
+                                WidthRequest="96"
+                                HeightRequest="40"
+                                CornerRadius="4"
+                                BorderWidth="0"
                                 VerticalOptions="Center" />
 					</Grid>
 				</Border>
@@ -206,22 +223,22 @@
 				<Border BackgroundColor="#0F1628"
                         Stroke="#1E3A5F"
                         StrokeThickness="1"
-                        Padding="20,16">
+                        Padding="16,8">
 					<Border.StrokeShape>
-						<RoundRectangle CornerRadius="16" />
+						<RoundRectangle CornerRadius="10" />
 					</Border.StrokeShape>
 
 					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
 						<Border Grid.Column="0"
                                 BackgroundColor="#1B2436"
-                                WidthRequest="46"
-                                HeightRequest="46"
+                                WidthRequest="40"
+                                HeightRequest="40"
                                 VerticalOptions="Center">
 							<Border.StrokeShape>
-								<RoundRectangle CornerRadius="23" />
+								<RoundRectangle CornerRadius="8" />
 							</Border.StrokeShape>
 							<Label Text="D"
-                                   FontSize="21"
+                                   FontSize="18"
                                    FontAttributes="Bold"
                                    TextColor="#6BA8FF"
                                    HorizontalOptions="Center"
@@ -230,12 +247,12 @@
 
 						<VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
 							<Label Text="Private DNS"
-                                   FontSize="21"
+                                   FontSize="18"
                                    FontAttributes="Bold"
                                    TextColor="White" />
 							<Label x:Name="LayerDnsInfo"
                                    Text="Checked on this TV"
-                                   FontSize="14"
+                                   FontSize="12"
                                    TextColor="#8A8AA4" />
 						</VerticalStackLayout>
 
@@ -246,9 +263,10 @@
                                 FontSize="15"
                                 FontAttributes="Bold"
                                 Padding="0"
-                                WidthRequest="104"
-                                HeightRequest="48"
-                                CornerRadius="24"
+                                WidthRequest="96"
+                                HeightRequest="40"
+                                CornerRadius="4"
+                                BorderWidth="0"
                                 VerticalOptions="Center" />
 					</Grid>
 				</Border>
@@ -259,52 +277,46 @@
                              HeightRequest="5"
                              Margin="0,4" />
 
-				<!-- Continue watching: titles the viewer left part way through. Hidden
-				     until there is one. -->
+				<!-- Continue watching: titles the viewer left part way through.
+				     Always on screen, with a short hint until the first one. -->
 				<VerticalStackLayout x:Name="ContinueSection"
-                                     IsVisible="False"
-                                     Spacing="8">
+                                     Spacing="6">
 					<Label Text="Continue watching"
-                           FontSize="19"
+                           FontSize="16"
                            FontAttributes="Bold"
                            TextColor="#C9C9DE" />
 					<ScrollView Orientation="Horizontal">
-						<HorizontalStackLayout x:Name="ContinueList" Spacing="12" />
+						<HorizontalStackLayout x:Name="ContinueList" Spacing="10" />
 					</ScrollView>
 				</VerticalStackLayout>
 
 				<Label x:Name="HomeHint"
-                       Text="Arrows move, OK presses. Filtering starts with the site."
-                       FontSize="14"
+                       Text="Arrows move, OK presses."
+                       FontSize="12"
                        TextColor="#6C6C84" />
 
-				<!-- The two things a viewer actually came to do. -->
-				<HorizontalStackLayout Spacing="16" Margin="0,6,0,0">
-					<Button x:Name="BtnActivity"
-                            Text="Activity"
-                            Clicked="OnActivityClicked"
-                            BackgroundColor="#162036"
-                            TextColor="#E6F1FF"
-                            FontSize="18"
-                            Padding="28,14"
-                            CornerRadius="12" />
-
-					<Button x:Name="BtnStart"
-                            Text="Start watching"
-                            Clicked="OnStartClicked"
-                            BackgroundColor="#06B6D4"
-                            TextColor="White"
-                            FontSize="18"
-                            FontAttributes="Bold"
-                            Padding="28,14"
-                            CornerRadius="12" />
-				</HorizontalStackLayout>
+				<!-- The thing a viewer actually came to do. -->
+				<Button x:Name="BtnStart"
+                        Text="Start watching"
+                        Clicked="OnStartClicked"
+                        BackgroundColor="#06B6D4"
+                        TextColor="White"
+                        FontSize="17"
+                        FontAttributes="Bold"
+                        Padding="0"
+                        WidthRequest="200"
+                        HeightRequest="46"
+                        CornerRadius="4"
+                        BorderWidth="0"
+                        HorizontalOptions="Start"
+                        Margin="0,6,0,0" />
 			</VerticalStackLayout>
 		</Grid>
 
 		<!-- ============================================================
 		     Activity: what was asked for, and whether it got through.
-		     The same list Repel shows, limited to this app.
+		     Reached from Back on the home screen, so the home screen keeps
+		     just the one button a viewer needs.
 		     ============================================================ -->
 		<Grid x:Name="ActivityPanel"
               IsVisible="False"
@@ -322,7 +334,8 @@
                         TextColor="#E6F1FF"
                         FontSize="17"
                         Padding="22,12"
-                        CornerRadius="12" />
+                        CornerRadius="4"
+                        BorderWidth="0" />
 
 				<Label Grid.Column="1"
                        Text="Activity"
@@ -339,7 +352,8 @@
                         TextColor="#E6F1FF"
                         FontSize="17"
                         Padding="22,12"
-                        CornerRadius="12" />
+                        CornerRadius="4"
+                        BorderWidth="0" />
 			</Grid>
 
 			<Label x:Name="ActivityEmpty"
@@ -363,7 +377,7 @@
                                 Padding="18,12"
                                 Margin="0,0,0,8">
 							<Border.StrokeShape>
-								<RoundRectangle CornerRadius="14" />
+								<RoundRectangle CornerRadius="8" />
 							</Border.StrokeShape>
 
 							<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
@@ -374,7 +388,7 @@
                                         HeightRequest="38"
                                         VerticalOptions="Center">
 									<Border.StrokeShape>
-										<RoundRectangle CornerRadius="19" />
+										<RoundRectangle CornerRadius="6" />
 									</Border.StrokeShape>
 									<Label Text="{Binding Badge}"
                                            FontSize="17"
@@ -427,7 +441,8 @@
                         TextColor="#E6F1FF"
                         FontSize="17"
                         Padding="22,12"
-                        CornerRadius="12" />
+                        CornerRadius="4"
+                        BorderWidth="0" />
 
 				<Label Grid.Column="1"
                        Text="Private DNS presets"
@@ -454,7 +469,8 @@
                             TextColor="White"
                             FontSize="17"
                             FontAttributes="Bold"
-                            CornerRadius="12"
+                            CornerRadius="4"
+                            BorderWidth="0"
                             Margin="0,14,0,0" />
 
 					<Button x:Name="BtnOpenDns"
@@ -463,7 +479,8 @@
                             BackgroundColor="#162036"
                             TextColor="#E6F1FF"
                             FontSize="17"
-                            CornerRadius="12" />
+                            CornerRadius="4"
+                            BorderWidth="0" />
 				</VerticalStackLayout>
 			</ScrollView>
 		</Grid>

@@ -109,6 +109,7 @@ public static class PlayerControl
       episode: info.episode || null,
       watched: Math.floor(info.currentTime),
       duration: Math.floor(info.duration || 0),
+      url: location.href,
       updated: Date.now()
     };
     // Keep only the 60 most recent titles so storage never grows without limit.
@@ -158,14 +159,25 @@ public static class PlayerControl
     if (info.event === 'play') playing = true;
     if (info.event === 'pause' || info.event === 'ended') playing = false;
 
+    reportPlaying();
+
     if (info.tmdbId) {
       resumeIfSaved(info);
       if (!holdSaves) saveProgress(info);
     }
   });
 
-  function play() { playing = true; send({ command: 'play' }); }
-  function pause() { playing = false; send({ command: 'pause' }); }
+  // Tells the app whether a movie is playing, so the remote's Left key knows
+  // to open the player panel only while something is on.
+  function reportPlaying() {
+    try {
+      if (window.Un0TvNative && window.Un0TvNative.mediaPlaying)
+        window.Un0TvNative.mediaPlaying(playing ? 1 : 0);
+    } catch (e) { }
+  }
+
+  function play() { playing = true; reportPlaying(); send({ command: 'play' }); }
+  function pause() { playing = false; reportPlaying(); send({ command: 'pause' }); }
 
   function seek(to) {
     if (to < 0) to = 0;

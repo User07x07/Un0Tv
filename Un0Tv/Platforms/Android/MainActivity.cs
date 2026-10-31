@@ -90,6 +90,41 @@ public class MainActivity : MauiAppCompatActivity
         if (TvWebView.IsPopupOpen && TvWebView.KeyboardVisible)
             return base.DispatchKeyEvent(e);
 
+        // The app's own keyboard is up: every key types, moves on the letters or
+        // hides it again. Nothing reaches the page behind it.
+        if (e is not null && e.Action == KeyEventActions.Down && Overlays.KeyboardOpen)
+            return Overlays.HandleKeyboardKey(e.KeyCode);
+
+        // The movie control panel is up: the arrows move on it, OK presses, and
+        // Left closes it again - the same key that opened it.
+        if (e is not null && e.Action == KeyEventActions.Down && Overlays.PlayerOpen)
+        {
+            switch (e.KeyCode)
+            {
+                case AndroidKeycode.DpadLeft:
+                    Overlays.ClosePlayer();
+                    return true;
+
+                case AndroidKeycode.Back:
+                    Overlays.ClosePlayer();
+                    return true;
+
+                case AndroidKeycode.DpadUp:
+                case AndroidKeycode.DpadDown:
+                case AndroidKeycode.DpadCenter:
+                case AndroidKeycode.Enter:
+                case AndroidKeycode.NumpadEnter:
+                    // Left to Android: the panel is made of real buttons, so the
+                    // system moves the ring and presses the right one.
+                    Overlays.TouchPlayer();
+                    return base.DispatchKeyEvent(e);
+
+                default:
+                    Overlays.TouchPlayer();
+                    return base.DispatchKeyEvent(e);
+            }
+        }
+
         // The startup check is on screen and the site has not loaded yet, so
         // there is no page to drive. The arrows move between the check's own
         // buttons; every other key is left to Android, which presses whichever
@@ -137,9 +172,12 @@ public class MainActivity : MauiAppCompatActivity
             }
         }
 
-        // A movie filling the screen: its own player controls own the arrows.
-        // Back still has to leave fullscreen, so that one key is handled below.
-        if (TvWebView.IsFullscreen && e is not null && e.KeyCode != AndroidKeycode.Back)
+        // A movie filling the screen: Left opens the player panel, and Back
+        // leaves fullscreen. Every other key belongs to the player's own
+        // controls.
+        if (TvWebView.IsFullscreen && e is not null
+            && e.KeyCode != AndroidKeycode.Back
+            && e.KeyCode != AndroidKeycode.DpadLeft)
             return base.DispatchKeyEvent(e);
 
         if (e is not null && e.Action == KeyEventActions.Down)
@@ -152,6 +190,16 @@ public class MainActivity : MauiAppCompatActivity
                 case AndroidKeycode.DpadDown:
                 case AndroidKeycode.DpadLeft:
                 case AndroidKeycode.DpadRight:
+                    // Left while a movie is on, or while it fills the screen, is
+                    // the way to the player panel. Every other arrow keeps
+                    // moving the highlight on the page.
+                    if (e.KeyCode == AndroidKeycode.DpadLeft
+                        && (TvWebView.IsFullscreen || Overlays.MediaActive))
+                    {
+                        Overlays.OpenPlayer();
+                        break;
+                    }
+
                     var dx = e.KeyCode == AndroidKeycode.DpadLeft ? -1
                            : e.KeyCode == AndroidKeycode.DpadRight ? 1 : 0;
                     var dy = e.KeyCode == AndroidKeycode.DpadUp ? -1

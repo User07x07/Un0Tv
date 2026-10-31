@@ -140,13 +140,7 @@ public partial class MainPage : ContentPage
         ShieldState.TextColor = Color.FromArgb(protectedNow ? "#FFFFFF" : "#F0736A");
 
         var layersOn = (protectedNow ? 1 : 0) + (listOn ? 1 : 0) + 1;
-        LayerCount.Text = $"{layersOn} of 3 layers on";
-
-        // ---- The figures ----
-        BlockedToday.Text = AdStats.BlockedToday.ToString("N0");
-        ChecksToday.Text = AdStats.ChecksToday == 0
-            ? "No lookups yet"
-            : $"{AdStats.ChecksToday:N0} lookups checked";
+        _ = layersOn;
 
         // ---- Layer 1: the filter ----
         BtnFilter.Text = _filterOn ? "ON" : "OFF";
@@ -186,7 +180,7 @@ public partial class MainPage : ContentPage
 
         HomeHint.Text = _filterOn
             ? "Arrows move, OK presses. Filtering is on."
-            : "Filtering is off. Turn the first layer on to block adverts.";
+            : "Filtering is off. Open the first layer to block adverts.";
 
         DrawActivityHeader();
     }
@@ -216,15 +210,6 @@ public partial class MainPage : ContentPage
                 return;
 
             AdStats.Drain();
-
-            if (HomePanel.IsVisible)
-            {
-                BlockedToday.Text = AdStats.BlockedToday.ToString("N0");
-                ChecksToday.Text = AdStats.ChecksToday == 0
-                    ? "No lookups yet"
-                    : $"{AdStats.ChecksToday:N0} lookups checked";
-                LayerCount.Text = $"{(_filterOn ? 1 : 0) + (Hagezi.IsLoaded ? 1 : 0) + 1} of 3 layers on";
-            }
 
             if (ActivityPanel.IsVisible)
                 DrawActivityHeader();
@@ -332,7 +317,6 @@ public partial class MainPage : ContentPage
         BtnFilter.IsEnabled = false;
         BtnList.IsEnabled = false;
         BtnStart.IsEnabled = false;
-        BtnActivity.IsEnabled = false;
 
         try
         {
@@ -363,7 +347,6 @@ public partial class MainPage : ContentPage
             BtnFilter.IsEnabled = true;
             BtnList.IsEnabled = true;
             BtnStart.IsEnabled = true;
-            BtnActivity.IsEnabled = true;
         }
     }
 
@@ -416,14 +399,28 @@ public partial class MainPage : ContentPage
     // The Continue watching cards, rebuilt each time the home screen opens.
     private readonly List<Button> _continueButtons = new();
 
-    // Draws the Continue watching row from the saved progress.
+    // Draws the Continue watching row from the saved progress. The row always
+    // shows, so the viewer can see where their titles will appear.
     private void DrawContinue()
     {
-        var items = WatchProgress.Recent(8);
+        var items = WatchProgress.Recent(3);
 
         ContinueList.Children.Clear();
         _continueButtons.Clear();
-        ContinueSection.IsVisible = items.Count > 0;
+
+        if (items.Count == 0)
+        {
+            ContinueList.Children.Add(new Label
+            {
+                Text = "Nothing yet - start a movie and it shows up here.",
+                FontFamily = "Segoe UI",
+                FontSize = 13,
+                TextColor = Color.FromArgb("#6C6C84"),
+                VerticalOptions = LayoutOptions.Center,
+                Margin = new Thickness(2, 8, 0, 0)
+            });
+            return;
+        }
 
         foreach (var item in items)
         {
@@ -431,10 +428,12 @@ public partial class MainPage : ContentPage
             var button = new Button
             {
                 Text = $"{picked.Label}\n{picked.Progress}",
-                FontSize = 15,
-                CornerRadius = 12,
-                Padding = new Thickness(18, 10),
-                WidthRequest = 260,
+                FontFamily = "Segoe UI",
+                FontSize = 13,
+                CornerRadius = 4,
+                Padding = new Thickness(14, 6),
+                WidthRequest = 158,
+                HeightRequest = 74,
                 BackgroundColor = Color.FromArgb("#0F1628"),
                 TextColor = Color.FromArgb("#EDEDF7")
             };
@@ -468,8 +467,10 @@ public partial class MainPage : ContentPage
             var index = i;
             var button = new Button
             {
+                FontFamily = "Segoe UI",
                 FontSize = 17,
-                CornerRadius = 12,
+                CornerRadius = 4,
+                BorderWidth = 0,
                 Padding = new Thickness(22, 12),
                 HorizontalOptions = LayoutOptions.Start,
                 BackgroundColor = Color.FromArgb("#0F1628"),
@@ -533,7 +534,18 @@ public partial class MainPage : ContentPage
 
     private void OnActivityClicked(object? sender, EventArgs e)
     {
+        ShowActivity();
+    }
+
+    // The Activity list. Reached with Back from the home screen, which keeps
+    // that screen down to the one button a viewer needs.
+    internal void ShowActivity()
+    {
+        if (!HomePanel.IsVisible && !ActivityPanel.IsVisible && !DnsPanel.IsVisible)
+            return;
+
         HomePanel.IsVisible = false;
+        DnsPanel.IsVisible = false;
         ActivityPanel.IsVisible = true;
 
         // Rows are only collected while a screen is looking at them.
@@ -549,7 +561,7 @@ public partial class MainPage : ContentPage
         ActivityPanel.IsVisible = false;
         AdStats.IsWatched = false;
         ShowHome();
-        FocusFirst(BtnActivity);
+        FocusFirst(BtnStart);
     }
 
     // All / Blocked, the two tabs Repel puts above its list.
@@ -590,12 +602,13 @@ public partial class MainPage : ContentPage
 
         if (HomePanel.IsVisible)
         {
+            // The home screen keeps just the one button. The Activity list is
+            // reached with Back, so a viewer has one obvious thing to press.
             order.Add(BtnFilter);
             order.Add(BtnList);
             order.Add(BtnDns);
             foreach (var b in _continueButtons)
                 order.Add(b);
-            order.Add(BtnActivity);
             order.Add(BtnStart);
         }
         else if (DnsPanel.IsVisible)
@@ -676,6 +689,9 @@ public partial class MainPage : ContentPage
         // one in place, because this runs well after the framework has set its
         // own up.
         AttachNative();
+#if ANDROID
+        Overlays.ResetForPage();
+#endif
         RunScript(PageScripts.AutoPlay);
 
         // Some sites render their buttons slightly after the page reports "loaded",
@@ -696,6 +712,10 @@ public partial class MainPage : ContentPage
     public void ActivateFocus()
         => RunScript("window.__un0tvNav&&window.__un0tvNav.activate();");
 
+    // Runs a script in the page for the Android side (the on-screen keyboard
+    // types into the site's own search box this way).
+    public void RunInPage(string js) => RunScript(js);
+
     // Called from MainActivity on Back button
     public bool HandleBack()
     {
@@ -713,7 +733,12 @@ public partial class MainPage : ContentPage
         }
 
         if (HomePanel.IsVisible)
+        {
+            // Back is the way to the Activity list. It never exits the app from
+            // here, which is what used to leave a blank screen behind it.
+            ShowActivity();
             return true;
+        }
 
         if (_history.Count > 0)
         {
