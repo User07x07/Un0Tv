@@ -689,9 +689,6 @@ public partial class MainPage : ContentPage
         // one in place, because this runs well after the framework has set its
         // own up.
         AttachNative();
-#if ANDROID
-        Overlays.ResetForPage();
-#endif
         RunScript(PageScripts.AutoPlay);
 
         // Some sites render their buttons slightly after the page reports "loaded",

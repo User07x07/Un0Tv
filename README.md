@@ -5,7 +5,7 @@
 Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. The site itself was built for phones: it expects swipes, has no TV navigation, and serves its films through third-party players covered in adverts. Un0Tv bridges that gap on the TV side, inside one app and without a VPN.
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-1.4.0-blueviolet?style=flat-square" />
+  <img alt="version" src="https://img.shields.io/badge/version-1.5.0-blueviolet?style=flat-square" />
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%20TV%20%7C%20Google%20TV-3DDC84?style=flat-square" />
   <img alt="dotnet" src="https://img.shields.io/badge/_.NET-MAUI%20%C2%B7%20net10.0--android-512BD4?style=flat-square" />
   <img alt="min sdk" src="https://img.shields.io/badge/min%20Android-5.0%20(API%2021)-0A84FF?style=flat-square" />
@@ -39,9 +39,13 @@ Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. Th
 |---|---|
 | **TV launcher** | Declares `LEANBACK_LAUNCHER` and ships a TV banner, so Un0Tv appears on the Android TV home screen, not just in the apps list. |
 | **Always landscape** | The activity is locked to landscape with the light bar hidden and the screen kept awake. |
-| **Home screen** | Before the site opens, a protection dashboard in the style of Repel: a shield showing whether you are protected, the number of lookups blocked today, and three protection layers, each with its own button. |
-| **Activity log** | A second screen lists what was looked up and whether it got through, newest first, with an All / Blocked tab. |
+| **Home screen** | Before the site opens, a protection dashboard in the style of Repel: a shield showing whether you are protected, three protection layers each with its own square button, a Continue watching row, and the one Start button a viewer needs. |
+| **Activity log** | Reached with **Back** from the home screen: what was looked up and whether it got through, newest first, with an All / Blocked tab. |
 | **D-pad navigation** | The remote's arrows move a moving highlight over the site's clickable items; the centre button presses the highlighted one. |
+| **Watch progress** | The player reports its time, the app saves it on the TV, and the same title resumes where the viewer stopped. |
+| **Continue watching** | The home screen shows the last three titles left part way through, and a matching strip is drawn inside the site's own library. Both reopen the title and seek to the saved spot. |
+| **Media keys** | **Play**, **Pause**, **Play/Pause**, fast-forward and rewind on the remote drive the player through its own message API. |
+| **Search typing** | OK on the search box puts the caret in the box and raises the TV's own keyboard, so a film can be typed with the remote. |
 | **Advert filtering** | Three layers: HaGeZi's Multi PRO list (~214,000 domains) plus a built-in host list on every network request, and an in-page cleaner that runs inside every frame, including the movie player's own. |
 | **Pop-up policy** | The movie player's "can I open a pop-up?" check passes silently, while advert windows are refused and sign-in windows are allowed. |
 | **Auto play** | Landing on a watch page presses the site's own play control, then lifts the mute so the film starts with sound. |
@@ -54,7 +58,7 @@ Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. Th
 ```mermaid
 flowchart TD
     A("MainActivity<br/>remote keys, fullscreen") --> B("MainPage<br/>browser + protection screens")
-    B --> H("Home: shield, blocked today,<br/>three layer buttons")
+    B --> H("Home: shield, three layer buttons,<br/>Continue watching, Start")
     B --> L("Activity: what was looked up")
     H --> C{"Filter layer on?"}
     C -->|"Off"| E("Site loads, unfiltered")
@@ -67,6 +71,9 @@ flowchart TD
     F --> E
     E --> G("AdCleanupScript<br/>in every frame")
     E --> N("DpadNav<br/>moves the highlight")
+    E --> P("PlayerControl<br/>resume, media keys")
+    P --> Q("WatchProgress<br/>kept on the TV")
+    Q --> H
     G --> I("Clean playback")
     N --> I
 ```
@@ -99,7 +106,7 @@ The home screen has three layer buttons, the way Repel lays out its protection:
 | **HaGeZi Multi PRO list** | `Get` / `Update` | Fetches the ~214,000-domain list (around 30 MB, kept on the TV), or refreshes it later. |
 | **Private DNS** | `Open` | Opens the TV's own settings. Android does not let one app change another app's DNS, so this takes you to the screen where you can. Setting it to `dns.adguard.com` blocks adverts in **every** app on the TV, not just Un0Tv. |
 
-The shield turns green and says **Protected** when the filter is on, and the number under it counts lookups refused since midnight. **Activity** opens the log: one row per address, `Blocked` or `Allowed`, with what it was and how long ago. `Blocked` shows only the refused ones.
+The shield turns green and says **Protected** when the filter is on. The counters and the "3 of 3 layers on" wording are deliberately gone: this is a player, not a dashboard, so the screen shows only what has to be pressed. **Back** opens the log: one row per address, `Blocked` or `Allowed`, with what it was and how long ago. `Blocked` shows only the refused ones.
 
 The five published HaGeZi files all carry the same domains in different formats, and the app merges all five:
 
@@ -133,19 +140,26 @@ Browsers only allow a video to start by itself while it is muted, so the player 
 
 ```
 Un0Tv/
-├── MainPage.xaml / .xaml.cs        Home dashboard, Activity log, and the browser
+├── MainPage.xaml / .xaml.cs        Home dashboard, Activity log, DNS presets, the browser
 ├── Activity.cs                     The live counters and the activity rows
-├── PageScripts.cs                  Auto play script injected after each load
-├── DpadNav.cs                      The moving highlight and its arrow logic
+├── WatchProgress.cs                The saved titles behind Continue watching
+├── DnsPresets.cs                   The DNS names offered on the presets screen
 ├── Hagezi.cs                       The big block list: download, parse, match
 ├── version.json                    Base version for Nerdbank.GitVersioning
+├── PageScripts.cs                  Auto play script injected after each load
+├── DpadNav.cs                      The moving highlight and its arrow logic
+├── PlayerControl.cs                Watch progress and the remote's media keys
+├── ContinueNav.cs                  The Continue watching strip inside the site
+├── FieldInput.cs                   Caret into the search box, then the TV keyboard
 └── Platforms/Android/
-    ├── MainActivity.cs             Remote keys, fullscreen, Back, keyboard detection
+    ├── MainActivity.cs             Remote keys, fullscreen, Back, keyboard routing
     ├── AndroidManifest.xml         TV features and banner
-    ├── TvWebView.cs                Native view setup, pop-up window, fullscreen
+    ├── TvWebView.cs                Native view setup, pop-up window, fullscreen, script install
     ├── TvChromeClient.cs           Pop-up routing, fullscreen callbacks
     ├── TvWebViewClient.cs          Request hook for the filter
     ├── RequestFilter.cs            Keep list, short block list, the switch check
+    ├── ProgressBridge.cs           The page's way back in: save progress, focus, keyboard
+    ├── DnsFilterService.cs         The local VPN that filters every app on the TV
     ├── PopupGuard.cs               Which pop-up windows are allowed
     ├── AdCleanupScript.cs          In-frame advert cleaner
     └── AudioAutoplay.cs            Sound-on autoplay inside the player
@@ -250,25 +264,29 @@ If the TV says **"App not installed"**:
 | Key | What happens |
 |---|---|
 | **Up / Down / Left / Right** | Moves the highlight to the nearest clickable item in that direction |
-| **Center / Enter** | Presses the highlighted item |
-| **Back** | Leaves fullscreen, or closes the sign-in window, or steps back one page, or exits the app |
+| **Center / Enter** | Presses the highlighted item; on the search box it raises the TV's keyboard |
+| **Play / Pause / Play-Pause** | Starts, pauses, or toggles the video on the site |
+| **Fast-forward / Rewind** | Jumps forward or back in the video through the player's own message API |
+| **Back** | Puts the keyboard away, leaves fullscreen, closes the sign-in window, steps one page back, opens the Activity log from the home screen, or closes the app |
 
-The startup gate uses Android's own focus movement, so the D-pad works there in the normal TV way.
+There is no control card over the video: the media keys above are all a viewer needs, so nothing covers the picture.
+
+The home screen and the presets screen use Android's own focus movement, so the D-pad works there in the normal TV way.
 
 ---
 
 ## Versioning
 
-Current version: **1.4.0** (Android version code **5**).
+Current version: **1.5.0** (Android version code **6**).
 
-`version.json` holds the base version (`1.4`), and `Nerdbank.GitVersioning` is installed to expand it from git history. Android needs two numbers, and both must climb on every install or the TV treats the new file as the same old app and refuses to update it:
+`version.json` holds the base version (`1.5`), and `Nerdbank.GitVersioning` expands it from git history. Android needs two numbers, and both must climb on every install or the TV treats the new file as the same old app and refuses to update it:
 
-| Android setting | What it means | Current value |
+| Android setting | What it means | Written here |
 |---|---|---|
-| `ApplicationDisplayVersion` | The version you see, for example `1.4.0` | `1.4.0` |
-| `ApplicationVersion` | A whole number that must increase on every install | `5` |
+| `ApplicationDisplayVersion` | The version you see, for example `1.5.0` | `1.5.0` |
+| `ApplicationVersion` | A whole number that must increase on every install | `6` |
 
-> **Status:** the two numbers in `Un0Tv.csproj` are still hand-typed rather than driven by the versioning package. **Bump `ApplicationVersion` by one for every APK you install** — a repeat number is the usual reason a TV refuses an update.
+> **Which number wins.** The two values above are the **fallback**. `Nerdbank.GitVersioning` stamps the real ones from `version.json` and the commit count, which is why a Debug build reports something like `1.4.3-g<commit>`. Raise the base in `version.json` for a release a viewer can see, and raise `ApplicationVersion` by hand as well so the two stay in step — a repeat number is the usual reason a TV refuses an update.
 
 ---
 
@@ -278,8 +296,9 @@ Current version: **1.4.0** (Android version code **5**).
 - **Advert covers change.** The in-frame cleaner works by matching wording, corners and shapes. A cover with entirely new wording can slip through until it is added.
 - **The ad filter app's switch is not automatic.** Android will not let one app turn on another app's filter. The startup gate verifies it and opens the right screen; the final toggle is yours to press.
 - **Burning-in is forever.** A logo or QR encoded into the video picture itself is part of the film, so no layer can remove it.
+- **Typing depends on the TV.** The keyboard shown for the search box is Android's own. Some TVs only raise it after a real touch, and the app puts the caret in by script, so on such a TV the keys may not appear. Nothing else breaks: the search box still takes text from any keyboard the TV does offer.
 - **Only one site.** The address lives in `MainPage.xaml.cs` as `SiteUrl`. The scripts that press play and clean covers are tuned to that site's markup.
 
 ---
 
-<p align="center"><sub>Un0Tv 1.2.0 · built for a remote, not a thumb · tested on Sony Android TV</sub></p>
+<p align="center"><sub>Un0Tv 1.5.0 · built for a remote, not a thumb · tested on Sony Android TV</sub></p>

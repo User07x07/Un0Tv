@@ -35,9 +35,12 @@
 		<ApplicationId>com.DevLink.Un0tv</ApplicationId>
 
 		<!-- Versions. ApplicationVersion must go UP on every install, or the TV
-		     treats a new APK as the same old app and refuses the update. -->
-		<ApplicationDisplayVersion>1.4.0</ApplicationDisplayVersion>
-		<ApplicationVersion>5</ApplicationVersion>
+		     treats a new APK as the same old app and refuses the update.
+		     The real numbers are stamped from git by Nerdbank.GitVersioning
+		     (see version.json); these two are the fallback used when that
+		     package is missing, and they are kept in step with it. -->
+		<ApplicationDisplayVersion>1.5.0</ApplicationDisplayVersion>
+		<ApplicationVersion>6</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>None</WindowsPackageType>

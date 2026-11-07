@@ -85,40 +85,12 @@ public class MainActivity : MauiAppCompatActivity
     // closing a sign-in window works.
     public override bool DispatchKeyEvent(KeyEvent? e)
     {
-        // While the sign-in window is up and the system keyboard is showing,
-        // every key belongs to that window.
-        if (TvWebView.IsPopupOpen && TvWebView.KeyboardVisible)
+        // While the system keyboard is up, the keys belong to the box being
+        // typed into: the caret already sits in it on the page, so every key is
+        // handed back to the browser the way a normal keyboard would. Back is
+        // kept, so it can put the keys away.
+        if (TvWebView.KeyboardVisible && e is not null && e.KeyCode != AndroidKeycode.Back)
             return base.DispatchKeyEvent(e);
-
-        // The movie control panel is up: the arrows move on it, OK presses, and
-        // Left closes it again - the same key that opened it.
-        if (e is not null && e.Action == KeyEventActions.Down && Overlays.PlayerOpen)
-        {
-            switch (e.KeyCode)
-            {
-                case AndroidKeycode.DpadLeft:
-                    Overlays.ClosePlayer();
-                    return true;
-
-                case AndroidKeycode.Back:
-                    Overlays.ClosePlayer();
-                    return true;
-
-                case AndroidKeycode.DpadUp:
-                case AndroidKeycode.DpadDown:
-                case AndroidKeycode.DpadCenter:
-                case AndroidKeycode.Enter:
-                case AndroidKeycode.NumpadEnter:
-                    // Left to Android: the panel is made of real buttons, so the
-                    // system moves the ring and presses the right one.
-                    Overlays.TouchPlayer();
-                    return base.DispatchKeyEvent(e);
-
-                default:
-                    Overlays.TouchPlayer();
-                    return base.DispatchKeyEvent(e);
-            }
-        }
 
         // The startup check is on screen and the site has not loaded yet, so
         // there is no page to drive. The arrows move between the check's own
@@ -167,12 +139,10 @@ public class MainActivity : MauiAppCompatActivity
             }
         }
 
-        // A movie filling the screen: Left opens the player panel, and Back
-        // leaves fullscreen. Every other key belongs to the player's own
-        // controls.
+        // A movie filling the screen: Back leaves fullscreen, and every other
+        // key belongs to the player's own controls.
         if (TvWebView.IsFullscreen && e is not null
-            && e.KeyCode != AndroidKeycode.Back
-            && e.KeyCode != AndroidKeycode.DpadLeft)
+            && e.KeyCode != AndroidKeycode.Back)
             return base.DispatchKeyEvent(e);
 
         if (e is not null && e.Action == KeyEventActions.Down)
@@ -185,16 +155,6 @@ public class MainActivity : MauiAppCompatActivity
                 case AndroidKeycode.DpadDown:
                 case AndroidKeycode.DpadLeft:
                 case AndroidKeycode.DpadRight:
-                    // Left while a movie is on, or while it fills the screen, is
-                    // the way to the player panel. Every other arrow keeps
-                    // moving the highlight on the page.
-                    if (e.KeyCode == AndroidKeycode.DpadLeft
-                        && (TvWebView.IsFullscreen || Overlays.MediaActive))
-                    {
-                        Overlays.OpenPlayer();
-                        break;
-                    }
-
                     var dx = e.KeyCode == AndroidKeycode.DpadLeft ? -1
                            : e.KeyCode == AndroidKeycode.DpadRight ? 1 : 0;
                     var dy = e.KeyCode == AndroidKeycode.DpadUp ? -1
@@ -209,6 +169,14 @@ public class MainActivity : MauiAppCompatActivity
                     break;
 
                 case AndroidKeycode.Back:
+                    // Keys covering the page: Back puts them away first, which is
+                    // what a viewer expects when they are done searching.
+                    if (TvWebView.KeyboardVisible)
+                    {
+                        TvWebView.HideKeyboard();
+                        break;
+                    }
+
                     // A movie in fullscreen: Back leaves fullscreen first.
                     if (TvWebView.IsFullscreen)
                     {

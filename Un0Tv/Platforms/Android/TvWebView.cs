@@ -1,3 +1,4 @@
+using Android.Views.InputMethods;
 using Android.Webkit;
 using Microsoft.Maui.Handlers;
 using AndroidWebView = Android.Webkit.WebView;
@@ -176,6 +177,53 @@ internal static class TvWebView
         view.RequestFocus();
         view.RequestFocusFromTouch();
     }
+
+    // Raises the TV's own keyboard over the site's search box.
+    //
+    // The page has already put the caret in the real input; this only asks
+    // Android to show its keys. Chromium shows them by itself only after a real
+    // touch, and this app always puts the caret there with a script - which is
+    // why nothing came up before.
+    public static void ShowKeyboard()
+    {
+        var view = Popup ?? Main;
+        if (view is null)
+            return;
+
+        view.Focusable = true;
+        view.FocusableInTouchMode = true;
+        view.RequestFocus();
+
+        var imm = InputMethod();
+        if (imm is null)
+            return;
+
+        // Android's own flag for "show the keys now, even though the press did
+        // not come from a touch on the box".
+        imm.ShowSoftInput(view, ShowFlags.Implicit);
+
+        // Known at once, so the keys pressed right after OK already reach the
+        // box. The activity's own layout check corrects this either way.
+        KeyboardVisible = true;
+    }
+
+    // Puts the keys away again. Back does this as well, so the viewer can never
+    // be left with keys covering the page and no way out.
+    public static void HideKeyboard()
+    {
+        KeyboardVisible = false;
+
+        var view = Popup ?? Main;
+        if (view is null)
+            return;
+
+        InputMethod()?.HideSoftInputFromWindow(view.WindowToken, HideSoftInputFlags.None);
+    }
+
+    private static Android.Views.InputMethods.InputMethodManager? InputMethod()
+        => Android.App.Application.Context
+                  .GetSystemService(Android.Content.Context.InputMethodService)
+           as Android.Views.InputMethods.InputMethodManager;
 
     internal static void SetPopup(AndroidWebView? popup)
     {
