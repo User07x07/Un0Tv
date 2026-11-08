@@ -3,22 +3,71 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:Un0Tv"
              x:Class="Un0Tv.MainPage"
-             BackgroundColor="Black"
+             BackgroundColor="#05080F"
              Padding="0"
              Shell.NavBarIsVisible="False">
 
 	<ContentPage.Resources>
 
-		<!-- One look for the whole app: Segoe UI on every label, and every button
-		     drawn as a square with a thick cyan ring while the remote sits on it,
-		     so a viewer can always tell which button OK will press. -->
+		<!-- ============================================================
+		     The one look for the whole app.
+
+		     Ink        words the viewer reads first
+		     InkDim     the line under them
+		     InkFaint   hints and footnotes
+		     Card       every panel in the app
+		     Accent     the one colour that means "press me"
+		     Ring       what the remote is sitting on right now
+		     ============================================================ -->
+		<Color x:Key="Ink">#EDF2FC</Color>
+		<Color x:Key="InkDim">#9BA7C2</Color>
+		<Color x:Key="InkFaint">#6B7793</Color>
+		<Color x:Key="StrokeSoft">#20304E</Color>
+		<Color x:Key="Accent">#38BDF8</Color>
+		<Color x:Key="Ring">#7DD3FC</Color>
+		<Color x:Key="Good">#34D399</Color>
+		<Color x:Key="Bad">#F87171</Color>
+		<Color x:Key="Violet">#A78BFA</Color>
+
+		<!-- The night sky behind every screen: a faint blue glow top left,
+		     falling away to near-black. Flat black looks cheap on a TV. -->
+		<RadialGradientBrush x:Key="Backdrop"
+                             Center="0.14,0.04"
+                             Radius="1.15">
+			<GradientStop Color="#12213C" Offset="0.0" />
+			<GradientStop Color="#0A1223" Offset="0.55" />
+			<GradientStop Color="#05080F" Offset="1.0" />
+		</RadialGradientBrush>
+
+		<!-- Cards are lit from above, the way a shelf is. -->
+		<LinearGradientBrush x:Key="CardBrush" StartPoint="0,0" EndPoint="0,1">
+			<GradientStop Color="#18233D" Offset="0.0" />
+			<GradientStop Color="#0E1626" Offset="1.0" />
+		</LinearGradientBrush>
+
+		<!-- The one pressable colour. -->
+		<LinearGradientBrush x:Key="AccentBrush" StartPoint="0,0" EndPoint="1,1">
+			<GradientStop Color="#38BDF8" Offset="0.0" />
+			<GradientStop Color="#0EA5E9" Offset="1.0" />
+		</LinearGradientBrush>
+
+		<LinearGradientBrush x:Key="HairlineBrush" StartPoint="0,0" EndPoint="1,0">
+			<GradientStop Color="#38BDF8" Offset="0.0" />
+			<GradientStop Color="#334155" Offset="0.55" />
+			<GradientStop Color="#00000000" Offset="1.0" />
+		</LinearGradientBrush>
+
+		<!-- One look for the whole app: every label in the system sans, and every
+		     button drawn as a rounded pill with a thick cyan ring while the
+		     remote sits on it, so a viewer can always tell which button OK will
+		     press. -->
 		<Style TargetType="Label">
 			<Setter Property="FontFamily" Value="Segoe UI" />
 		</Style>
 
 		<Style TargetType="Button">
 			<Setter Property="FontFamily" Value="Segoe UI" />
-			<Setter Property="CornerRadius" Value="4" />
+			<Setter Property="CornerRadius" Value="10" />
 			<Setter Property="BorderWidth" Value="0" />
 			<Setter Property="BorderColor" Value="Transparent" />
 			<Setter Property="VisualStateManager.VisualStateGroups">
@@ -32,13 +81,125 @@
 						</VisualState>
 						<VisualState Name="Focused">
 							<VisualState.Setters>
-								<Setter Property="BorderWidth" Value="4" />
-								<Setter Property="BorderColor" Value="#22D3EE" />
+								<Setter Property="BorderWidth" Value="3" />
+								<Setter Property="BorderColor" Value="{StaticResource Ring}" />
 							</VisualState.Setters>
 						</VisualState>
 					</VisualStateGroup>
 				</VisualStateGroupList>
 			</Setter>
+		</Style>
+
+		<!-- A panel: soft gradient, hairline edge, generous corners. -->
+		<Style x:Key="Card" TargetType="Border">
+			<Setter Property="Background" Value="{StaticResource CardBrush}" />
+			<Setter Property="Stroke" Value="{StaticResource StrokeSoft}" />
+			<Setter Property="StrokeThickness" Value="1" />
+			<Setter Property="Padding" Value="18,14" />
+		</Style>
+
+		<!-- A card the remote can land on. The ring travels with it. -->
+		<Style x:Key="CardButton" TargetType="Button">
+			<Setter Property="FontFamily" Value="Segoe UI" />
+			<Setter Property="FontAttributes" Value="Bold" />
+			<Setter Property="BackgroundColor" Value="#162036" />
+			<Setter Property="TextColor" Value="#DCE7FA" />
+			<Setter Property="CornerRadius" Value="12" />
+			<Setter Property="BorderWidth" Value="0" />
+			<Setter Property="Padding" Value="0" />
+			<Setter Property="VisualStateManager.VisualStateGroups">
+				<VisualStateGroupList>
+					<VisualStateGroup Name="CommonStates">
+						<VisualState Name="Normal">
+							<VisualState.Setters>
+								<Setter Property="BorderWidth" Value="0" />
+								<Setter Property="BorderColor" Value="Transparent" />
+							</VisualState.Setters>
+						</VisualState>
+						<VisualState Name="Focused">
+							<VisualState.Setters>
+								<Setter Property="BorderWidth" Value="3" />
+								<Setter Property="BorderColor" Value="{StaticResource Ring}" />
+							</VisualState.Setters>
+						</VisualState>
+					</VisualStateGroup>
+				</VisualStateGroupList>
+			</Setter>
+		</Style>
+
+		<!-- The quiet button: back arrows, the All/Blocked tab, Open. -->
+		<Style x:Key="Ghost" TargetType="Button">
+			<Setter Property="FontFamily" Value="Segoe UI" />
+			<Setter Property="FontAttributes" Value="Bold" />
+			<Setter Property="FontSize" Value="16" />
+			<Setter Property="BackgroundColor" Value="#141D30" />
+			<Setter Property="TextColor" Value="#DCE7FA" />
+			<Setter Property="CornerRadius" Value="10" />
+			<Setter Property="Padding" Value="20,11" />
+			<Setter Property="BorderWidth" Value="1" />
+			<Setter Property="BorderColor" Value="#243250" />
+			<Setter Property="VisualStateManager.VisualStateGroups">
+				<VisualStateGroupList>
+					<VisualStateGroup Name="CommonStates">
+						<VisualState Name="Normal">
+							<VisualState.Setters>
+								<Setter Property="BorderWidth" Value="1" />
+								<Setter Property="BorderColor" Value="#243250" />
+							</VisualState.Setters>
+						</VisualState>
+						<VisualState Name="Focused">
+							<VisualState.Setters>
+								<Setter Property="BorderWidth" Value="3" />
+								<Setter Property="BorderColor" Value="{StaticResource Ring}" />
+								<Setter Property="BackgroundColor" Value="#1B2942" />
+							</VisualState.Setters>
+						</VisualState>
+					</VisualStateGroup>
+				</VisualStateGroupList>
+			</Setter>
+		</Style>
+
+		<!-- Section headings: small, spaced out, quietly grey - they organise
+		     the screen without competing with what is on it. -->
+		<Style x:Key="Section" TargetType="Label">
+			<Setter Property="FontFamily" Value="Segoe UI" />
+			<Setter Property="FontSize" Value="13" />
+			<Setter Property="FontAttributes" Value="Bold" />
+			<Setter Property="CharacterSpacing" Value="2.2" />
+			<Setter Property="TextColor" Value="{StaticResource InkDim}" />
+		</Style>
+
+		<Style x:Key="Title" TargetType="Label">
+			<Setter Property="FontFamily" Value="Segoe UI" />
+			<Setter Property="FontSize" Value="30" />
+			<Setter Property="FontAttributes" Value="Bold" />
+			<Setter Property="TextColor" Value="{StaticResource Ink}" />
+			<Setter Property="VerticalOptions" Value="Center" />
+		</Style>
+
+		<!-- The name of a card: the first thing read. -->
+		<Style x:Key="CardTitle" TargetType="Label">
+			<Setter Property="FontFamily" Value="Segoe UI" />
+			<Setter Property="FontSize" Value="18" />
+			<Setter Property="FontAttributes" Value="Bold" />
+			<Setter Property="TextColor" Value="{StaticResource Ink}" />
+		</Style>
+
+		<!-- The one line under it. -->
+		<Style x:Key="CardLine" TargetType="Label">
+			<Setter Property="FontFamily" Value="Segoe UI" />
+			<Setter Property="FontSize" Value="13" />
+			<Setter Property="TextColor" Value="{StaticResource InkFaint}" />
+			<Setter Property="LineBreakMode" Value="TailTruncation" />
+		</Style>
+
+		<!-- The square mark on the left of each card. -->
+		<Style x:Key="Glyph" TargetType="Label">
+			<Setter Property="FontFamily" Value="Segoe UI" />
+			<Setter Property="FontSize" Value="17" />
+			<Setter Property="FontAttributes" Value="Bold" />
+			<Setter Property="HorizontalOptions" Value="Center" />
+			<Setter Property="VerticalOptions" Value="Center" />
 		</Style>
 	</ContentPage.Resources>
 
@@ -52,265 +213,251 @@
 
 		<!-- ============================================================
 		     Home: the protection dashboard.
-		     Left: the shield and whether we are protected.
-		     Right: the protection layers, each with its own square button.
+		     A header with the app's own name, then the shield on the left
+		     and the three protection layers on the right, and the one
+		     button a viewer came for.
 		     ============================================================ -->
 		<Grid x:Name="HomePanel"
               IsVisible="False"
-              BackgroundColor="#070B16"
-              ColumnDefinitions="2*,3*"
-              ColumnSpacing="40"
-              Padding="44,24">
+              Background="{StaticResource Backdrop}"
+              RowDefinitions="Auto,*"
+              RowSpacing="22"
+              Padding="48,30">
 
-			<!-- Left column: status -->
-			<VerticalStackLayout Grid.Column="0"
-                                 VerticalOptions="Center"
-                                 HorizontalOptions="Center"
-                                 Spacing="10">
-
-				<!-- The status badge. Green tick when everything is on,
-				     red cross when the filter is off. -->
-				<Border x:Name="ShieldRing"
-                        WidthRequest="96"
-                        HeightRequest="96"
-                        BackgroundColor="#0F1628"
-                        StrokeThickness="3"
-                        Stroke="#2C2C40"
-                        HorizontalOptions="Center">
-					<Border.StrokeShape>
-						<RoundRectangle CornerRadius="48" />
-					</Border.StrokeShape>
-					<Label x:Name="ShieldGlyph"
-                           Text="&#x2713;"
-                           FontSize="42"
-                           TextColor="#34D399"
-                           HorizontalOptions="Center"
-                           VerticalOptions="Center" />
-				</Border>
-
-				<Label x:Name="ShieldState"
-                       Text="Protected"
-                       FontSize="26"
-                       FontAttributes="Bold"
-                       TextColor="White"
-                       HorizontalTextAlignment="Center" />
-
-				<!-- What the viewer has to do before watching. -->
-				<Label Text="Activate Parameters Before Proceeding to Ensure Smooth Stream"
-                       FontSize="15"
-                       TextColor="#9A9AB2"
-                       LineBreakMode="WordWrap"
-                       MaximumWidthRequest="300"
-                       HorizontalTextAlignment="Center" />
-			</VerticalStackLayout>
-
-			<!-- Right column: the layers -->
-			<VerticalStackLayout Grid.Column="1"
-                                 VerticalOptions="Center"
-                                 Spacing="8">
-
-				<Label Text="Protection layers"
-                       FontSize="16"
-                       FontAttributes="Bold"
-                       TextColor="#C9C9DE" />
-
-				<!-- Layer 1: the filter itself -->
-				<Border BackgroundColor="#0F1628"
-                        Stroke="#1E3A5F"
-                        StrokeThickness="1"
-                        Padding="16,8">
-					<Border.StrokeShape>
-						<RoundRectangle CornerRadius="10" />
-					</Border.StrokeShape>
-
-					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
-						<Border Grid.Column="0"
-                                BackgroundColor="#211E3A"
-                                WidthRequest="40"
-                                HeightRequest="40"
-                                VerticalOptions="Center">
-							<Border.StrokeShape>
-								<RoundRectangle CornerRadius="8" />
-							</Border.StrokeShape>
-							<Label Text="A"
-                                   FontSize="18"
-                                   FontAttributes="Bold"
-                                   TextColor="#A78BFA"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center" />
-						</Border>
-
-						<VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
-							<Label Text="Ad and tracker filter"
-                                   FontSize="18"
-                                   FontAttributes="Bold"
-                                   TextColor="White" />
-							<Label x:Name="LayerFilterInfo"
-                                   Text="Filtering with the built-in rules"
-                                   FontSize="12"
-                                   TextColor="#8A8AA4" />
-						</VerticalStackLayout>
-
-						<Button x:Name="BtnFilter"
-                                Grid.Column="2"
-                                Text="ON"
-                                Clicked="OnFilterToggled"
-                                FontSize="17"
-                                FontAttributes="Bold"
-                                Padding="0"
-                                WidthRequest="96"
-                                HeightRequest="40"
-                                CornerRadius="4"
-                                BorderWidth="0"
-                                VerticalOptions="Center" />
-					</Grid>
-				</Border>
-
-				<!-- Layer 2: the big public block list -->
-				<Border BackgroundColor="#0F1628"
-                        Stroke="#1E3A5F"
-                        StrokeThickness="1"
-                        Padding="16,8">
-					<Border.StrokeShape>
-						<RoundRectangle CornerRadius="10" />
-					</Border.StrokeShape>
-
-					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
-						<Border Grid.Column="0"
-                                BackgroundColor="#162A22"
-                                WidthRequest="40"
-                                HeightRequest="40"
-                                VerticalOptions="Center">
-							<Border.StrokeShape>
-								<RoundRectangle CornerRadius="8" />
-							</Border.StrokeShape>
-							<Label Text="H"
-                                   FontSize="18"
-                                   FontAttributes="Bold"
-                                   TextColor="#34D399"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center" />
-						</Border>
-
-						<VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
-							<Label Text="HaGeZi Multi PRO list"
-                                   FontSize="18"
-                                   FontAttributes="Bold"
-                                   TextColor="White" />
-							<Label x:Name="LayerListInfo"
-                                   Text="Not downloaded yet"
-                                   FontSize="12"
-                                   TextColor="#8A8AA4" />
-						</VerticalStackLayout>
-
-						<Button x:Name="BtnList"
-                                Grid.Column="2"
-                                Text="Get"
-                                Clicked="OnListClicked"
-                                FontSize="15"
-                                FontAttributes="Bold"
-                                Padding="0"
-                                WidthRequest="96"
-                                HeightRequest="40"
-                                CornerRadius="4"
-                                BorderWidth="0"
-                                VerticalOptions="Center" />
-					</Grid>
-				</Border>
-
-				<!-- Layer 3: the TV's own Private DNS, which works even with
-				     the app closed. -->
-				<Border BackgroundColor="#0F1628"
-                        Stroke="#1E3A5F"
-                        StrokeThickness="1"
-                        Padding="16,8">
-					<Border.StrokeShape>
-						<RoundRectangle CornerRadius="10" />
-					</Border.StrokeShape>
-
-					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
-						<Border Grid.Column="0"
-                                BackgroundColor="#1B2436"
-                                WidthRequest="40"
-                                HeightRequest="40"
-                                VerticalOptions="Center">
-							<Border.StrokeShape>
-								<RoundRectangle CornerRadius="8" />
-							</Border.StrokeShape>
-							<Label Text="D"
-                                   FontSize="18"
-                                   FontAttributes="Bold"
-                                   TextColor="#6BA8FF"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center" />
-						</Border>
-
-						<VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
-							<Label Text="Private DNS"
-                                   FontSize="18"
-                                   FontAttributes="Bold"
-                                   TextColor="White" />
-							<Label x:Name="LayerDnsInfo"
-                                   Text="Checked on this TV"
-                                   FontSize="12"
-                                   TextColor="#8A8AA4" />
-						</VerticalStackLayout>
-
-						<Button x:Name="BtnDns"
-                                Grid.Column="2"
-                                Text="Open"
-                                Clicked="OnDnsPanelClicked"
-                                FontSize="15"
-                                FontAttributes="Bold"
-                                Padding="0"
-                                WidthRequest="96"
-                                HeightRequest="40"
-                                CornerRadius="4"
-                                BorderWidth="0"
-                                VerticalOptions="Center" />
-					</Grid>
-				</Border>
-
-				<ProgressBar x:Name="ListProgress"
-                             IsVisible="False"
-                             ProgressColor="#22D3EE"
-                             HeightRequest="5"
-                             Margin="0,4" />
-
-				<!-- Continue watching: titles the viewer left part way through.
-				     Always on screen, with a short hint until the first one. -->
-				<VerticalStackLayout x:Name="ContinueSection"
-                                     Spacing="6">
-					<Label Text="Continue watching"
-                           FontSize="16"
+			<!-- Header -->
+			<Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+				<HorizontalStackLayout Grid.Column="0" Spacing="10" VerticalOptions="Center">
+					<Label Text="UN0TV"
+                           FontSize="18"
                            FontAttributes="Bold"
-                           TextColor="#C9C9DE" />
-					<ScrollView Orientation="Horizontal">
-						<HorizontalStackLayout x:Name="ContinueList" Spacing="10" />
-					</ScrollView>
-				</VerticalStackLayout>
+                           CharacterSpacing="3"
+                           TextColor="{StaticResource Ink}" />
+					<Label Text="PROTECTION"
+                           FontSize="11"
+                           FontAttributes="Bold"
+                           CharacterSpacing="2.4"
+                           TextColor="{StaticResource Accent}"
+                           VerticalOptions="Center" />
+				</HorizontalStackLayout>
 
 				<Label x:Name="HomeHint"
+                       Grid.Column="2"
                        Text="Arrows move, OK presses."
-                       FontSize="12"
-                       TextColor="#6C6C84" />
+                       FontSize="13"
+                       TextColor="{StaticResource InkFaint}"
+                       VerticalOptions="Center" />
+			</Grid>
 
-				<!-- The thing a viewer actually came to do. -->
-				<Button x:Name="BtnStart"
-                        Text="Start watching"
-                        Clicked="OnStartClicked"
-                        BackgroundColor="#06B6D4"
-                        TextColor="White"
-                        FontSize="17"
-                        FontAttributes="Bold"
-                        Padding="0"
-                        WidthRequest="200"
-                        HeightRequest="46"
-                        CornerRadius="4"
-                        BorderWidth="0"
-                        HorizontalOptions="Start"
-                        Margin="0,6,0,0" />
-			</VerticalStackLayout>
+			<!-- Body -->
+			<Grid Grid.Row="1" ColumnDefinitions="2*,3*" ColumnSpacing="34">
+
+				<!-- Left: the shield -->
+				<Border Grid.Column="0"
+                        Style="{StaticResource Card}"
+                        StrokeShape="RoundRectangle 18"
+                        Padding="26,22"
+                        VerticalOptions="Center"
+                        HorizontalOptions="Fill">
+
+					<VerticalStackLayout Spacing="12">
+						<Label Text="YOUR STATE" Style="{StaticResource Section}" />
+
+						<!-- The status badge. A ring that is green when everything
+						     is on, red when the filter is off. -->
+						<Border x:Name="ShieldRing"
+                                WidthRequest="108"
+                                HeightRequest="108"
+                                StrokeThickness="3"
+                                Stroke="#2C3651"
+                                HorizontalOptions="Center"
+                                Margin="0,4,0,2">
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="54" />
+							</Border.StrokeShape>
+							<Border.Background>
+								<RadialGradientBrush Center="0.5,0.35"
+                                                     Radius="0.8">
+									<GradientStop Color="#1A2740" Offset="0.0" />
+									<GradientStop Color="#0B1322" Offset="1.0" />
+								</RadialGradientBrush>
+							</Border.Background>
+							<Label x:Name="ShieldGlyph"
+                                   Text="&#x2713;"
+                                   FontSize="46"
+                                   TextColor="{StaticResource Good}"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+						</Border>
+
+						<Label x:Name="ShieldState"
+                               Text="Protected"
+                               FontSize="26"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Ink}"
+                               HorizontalTextAlignment="Center" />
+
+						<!-- What the viewer has to do before watching. -->
+						<Label Text="Activate Parameters Before Proceeding to Ensure Smooth Stream"
+                               FontSize="14"
+                               TextColor="{StaticResource InkDim}"
+                               LineBreakMode="WordWrap"
+                               MaximumWidthRequest="320"
+                               HorizontalTextAlignment="Center"
+                               HorizontalOptions="Center" />
+					</VerticalStackLayout>
+				</Border>
+
+				<!-- Right: the layers, what is left to watch, and the way in. -->
+				<VerticalStackLayout Grid.Column="1"
+                                     VerticalOptions="Center"
+                                     Spacing="12">
+
+					<Label Text="PROTECTION LAYERS" Style="{StaticResource Section}" />
+
+					<!-- Layer 1: the filter itself -->
+					<Border Style="{StaticResource Card}"
+                            StrokeShape="RoundRectangle 14"
+                            Padding="18,12">
+						<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+							<Border Grid.Column="0"
+                                    BackgroundColor="#211E3A"
+                                    WidthRequest="44"
+                                    HeightRequest="44"
+                                    VerticalOptions="Center"
+                                    StrokeThickness="0"
+                                    StrokeShape="RoundRectangle 12">
+								<Label Text="A" Style="{StaticResource Glyph}" TextColor="{StaticResource Violet}" />
+							</Border>
+
+							<VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+								<Label Text="Ad and tracker filter" Style="{StaticResource CardTitle}" />
+								<Label x:Name="LayerFilterInfo"
+                                       Text="Filtering with the built-in rules"
+                                       Style="{StaticResource CardLine}" />
+							</VerticalStackLayout>
+
+							<Button x:Name="BtnFilter"
+                                    Grid.Column="2"
+                                    Text="ON"
+                                    Clicked="OnFilterToggled"
+                                    FontSize="16"
+                                    FontAttributes="Bold"
+                                    Padding="0"
+                                    WidthRequest="104"
+                                    HeightRequest="44"
+                                    CornerRadius="12"
+                                    BorderWidth="0"
+                                    VerticalOptions="Center" />
+						</Grid>
+					</Border>
+
+					<!-- Layer 2: the big public block list -->
+					<Border Style="{StaticResource Card}"
+                            StrokeShape="RoundRectangle 14"
+                            Padding="18,12">
+						<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+							<Border Grid.Column="0"
+                                    BackgroundColor="#132A22"
+                                    WidthRequest="44"
+                                    HeightRequest="44"
+                                    VerticalOptions="Center"
+                                    StrokeThickness="0"
+                                    StrokeShape="RoundRectangle 12">
+								<Label Text="H" Style="{StaticResource Glyph}" TextColor="{StaticResource Good}" />
+							</Border>
+
+							<VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+								<Label Text="HaGeZi Multi PRO list" Style="{StaticResource CardTitle}" />
+								<Label x:Name="LayerListInfo"
+                                       Text="Not downloaded yet"
+                                       Style="{StaticResource CardLine}" />
+							</VerticalStackLayout>
+
+							<Button x:Name="BtnList"
+                                    Grid.Column="2"
+                                    Text="Get"
+                                    Clicked="OnListClicked"
+                                    FontSize="15"
+                                    FontAttributes="Bold"
+                                    Padding="0"
+                                    WidthRequest="104"
+                                    HeightRequest="44"
+                                    CornerRadius="12"
+                                    BorderWidth="0"
+                                    VerticalOptions="Center" />
+						</Grid>
+					</Border>
+
+					<!-- Layer 3: the TV's own Private DNS, which works even with
+					     the app closed. -->
+					<Border Style="{StaticResource Card}"
+                            StrokeShape="RoundRectangle 14"
+                            Padding="18,12">
+						<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+							<Border Grid.Column="0"
+                                    BackgroundColor="#16223C"
+                                    WidthRequest="44"
+                                    HeightRequest="44"
+                                    VerticalOptions="Center"
+                                    StrokeThickness="0"
+                                    StrokeShape="RoundRectangle 12">
+								<Label Text="D" Style="{StaticResource Glyph}" TextColor="{StaticResource Accent}" />
+							</Border>
+
+							<VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+								<Label Text="Private DNS" Style="{StaticResource CardTitle}" />
+								<Label x:Name="LayerDnsInfo"
+                                       Text="Checked on this TV"
+                                       Style="{StaticResource CardLine}" />
+							</VerticalStackLayout>
+
+							<Button x:Name="BtnDns"
+                                    Grid.Column="2"
+                                    Text="Open"
+                                    Clicked="OnDnsPanelClicked"
+                                    FontSize="15"
+                                    FontAttributes="Bold"
+                                    Padding="0"
+                                    WidthRequest="104"
+                                    HeightRequest="44"
+                                    CornerRadius="12"
+                                    BorderWidth="0"
+                                    VerticalOptions="Center" />
+						</Grid>
+					</Border>
+
+					<ProgressBar x:Name="ListProgress"
+                                 IsVisible="False"
+                                 ProgressColor="{StaticResource Accent}"
+                                 HeightRequest="4"
+                                 Margin="0,2" />
+
+					<!-- Continue watching: titles the viewer left part way through.
+					     Always on screen, with a short hint until the first one. -->
+					<VerticalStackLayout x:Name="ContinueSection" Spacing="8" Margin="0,2,0,0">
+						<Label Text="CONTINUE WATCHING" Style="{StaticResource Section}" />
+						<ScrollView Orientation="Horizontal">
+							<HorizontalStackLayout x:Name="ContinueList" Spacing="12" />
+						</ScrollView>
+					</VerticalStackLayout>
+
+					<!-- The thing a viewer actually came to do. -->
+					<Button x:Name="BtnStart"
+                            Text="Start watching"
+                            Clicked="OnStartClicked"
+                            Background="{StaticResource AccentBrush}"
+                            TextColor="#03121C"
+                            FontSize="17"
+                            FontAttributes="Bold"
+                            Padding="0"
+                            WidthRequest="230"
+                            HeightRequest="50"
+                            CornerRadius="12"
+                            BorderWidth="0"
+                            HorizontalOptions="Start"
+                            Margin="0,4,0,0" />
+				</VerticalStackLayout>
+			</Grid>
 		</Grid>
 
 		<!-- ============================================================
@@ -320,47 +467,41 @@
 		     ============================================================ -->
 		<Grid x:Name="ActivityPanel"
               IsVisible="False"
-              BackgroundColor="#070B16"
+              Background="{StaticResource Backdrop}"
               RowDefinitions="Auto,*"
-              RowSpacing="18"
-              Padding="52,38">
+              RowSpacing="20"
+              Padding="48,30">
 
-			<Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="22">
-				<Button x:Name="BtnBack"
-                        Grid.Column="0"
-                        Text="&#x2190; Home"
-                        Clicked="OnBackToHomeClicked"
-                        BackgroundColor="#162036"
-                        TextColor="#E6F1FF"
-                        FontSize="17"
-                        Padding="22,12"
-                        CornerRadius="4"
-                        BorderWidth="0" />
+			<Grid Grid.Row="0" RowDefinitions="Auto,Auto" RowSpacing="14">
+				<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="20">
+					<Button x:Name="BtnBack"
+                            Grid.Column="0"
+                            Text="&#x2190;  Home"
+                            Clicked="OnBackToHomeClicked"
+                            Style="{StaticResource Ghost}" />
 
-				<Label Grid.Column="1"
-                       Text="Activity"
-                       FontSize="30"
-                       FontAttributes="Bold"
-                       TextColor="White"
-                       VerticalOptions="Center" />
+					<Label Grid.Column="1" Text="Activity" Style="{StaticResource Title}" />
 
-				<Button x:Name="BtnRowsFilter"
-                        Grid.Column="2"
-                        Text="All"
-                        Clicked="OnRowsFilterClicked"
-                        BackgroundColor="#162036"
-                        TextColor="#E6F1FF"
-                        FontSize="17"
-                        Padding="22,12"
-                        CornerRadius="4"
-                        BorderWidth="0" />
+					<Button x:Name="BtnRowsFilter"
+                            Grid.Column="2"
+                            Text="All"
+                            Clicked="OnRowsFilterClicked"
+                            Style="{StaticResource Ghost}" />
+				</Grid>
+
+				<!-- A hairline that fades out to the right, under the title. -->
+				<Border Grid.Row="1"
+                        HeightRequest="1"
+                        Background="{StaticResource HairlineBrush}"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 1" />
 			</Grid>
 
 			<Label x:Name="ActivityEmpty"
                    Grid.Row="1"
-                   Text="Nothing has been looked up yet. Start watching a movie and come back."
-                   FontSize="19"
-                   TextColor="#7A7A92"
+                   Text="Nothing has been looked up yet.&#10;Start watching a movie and come back."
+                   FontSize="18"
+                   TextColor="{StaticResource InkFaint}"
                    HorizontalTextAlignment="Center"
                    VerticalOptions="Center" />
 
@@ -368,28 +509,26 @@
                             Grid.Row="1"
                             SelectionMode="None">
 
+				<CollectionView.ItemsLayout>
+					<LinearItemsLayout Orientation="Vertical" ItemSpacing="8" />
+				</CollectionView.ItemsLayout>
+
 				<CollectionView.ItemTemplate>
 					<DataTemplate x:DataType="local:LogEntry">
 
-						<Border BackgroundColor="#0F1628"
-                                Stroke="#222234"
-                                StrokeThickness="1"
-                                Padding="18,12"
-                                Margin="0,0,0,8">
-							<Border.StrokeShape>
-								<RoundRectangle CornerRadius="8" />
-							</Border.StrokeShape>
+						<Border Style="{StaticResource Card}"
+                                StrokeShape="RoundRectangle 14"
+                                Padding="16,12">
 
-							<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+							<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
 
 								<Border Grid.Column="0"
                                         BackgroundColor="{Binding BadgeBg}"
-                                        WidthRequest="38"
-                                        HeightRequest="38"
+                                        WidthRequest="40"
+                                        HeightRequest="40"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 12"
                                         VerticalOptions="Center">
-									<Border.StrokeShape>
-										<RoundRectangle CornerRadius="6" />
-									</Border.StrokeShape>
 									<Label Text="{Binding Badge}"
                                            FontSize="17"
                                            FontAttributes="Bold"
@@ -398,20 +537,23 @@
                                            VerticalOptions="Center" />
 								</Border>
 
-								<VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+								<VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
 									<Label Text="{Binding Host}"
-                                           FontSize="18"
+                                           FontSize="17"
                                            FontAttributes="Bold"
-                                           TextColor="#EDEDF7" />
+                                           TextColor="{StaticResource Ink}"
+                                           LineBreakMode="TailTruncation" />
 									<Label Text="{Binding Detail}"
-                                           FontSize="13"
-                                           TextColor="#7E7E96" />
+                                           FontSize="12"
+                                           TextColor="{StaticResource InkFaint}"
+                                           LineBreakMode="TailTruncation" />
 								</VerticalStackLayout>
 
 								<Label Grid.Column="2"
                                        Text="{Binding Kind}"
-                                       FontSize="15"
+                                       FontSize="13"
                                        FontAttributes="Bold"
+                                       CharacterSpacing="1.2"
                                        TextColor="{Binding BadgeColor}"
                                        VerticalOptions="Center" />
 							</Grid>
@@ -427,61 +569,65 @@
 		     ============================================================ -->
 		<Grid x:Name="DnsPanel"
               IsVisible="False"
-              BackgroundColor="#070B16"
+              Background="{StaticResource Backdrop}"
               RowDefinitions="Auto,Auto,*"
               RowSpacing="18"
-              Padding="52,38">
+              Padding="48,30">
 
-			<Grid Grid.Row="0" ColumnDefinitions="Auto,*" ColumnSpacing="22">
-				<Button x:Name="BtnDnsBack"
-                        Grid.Column="0"
-                        Text="&#x2190; Home"
-                        Clicked="OnDnsBackClicked"
-                        BackgroundColor="#162036"
-                        TextColor="#E6F1FF"
-                        FontSize="17"
-                        Padding="22,12"
-                        CornerRadius="4"
-                        BorderWidth="0" />
+			<Grid Grid.Row="0" RowDefinitions="Auto,Auto" RowSpacing="14">
+				<Grid ColumnDefinitions="Auto,*" ColumnSpacing="20">
+					<Button x:Name="BtnDnsBack"
+                            Grid.Column="0"
+                            Text="&#x2190;  Home"
+                            Clicked="OnDnsBackClicked"
+                            Style="{StaticResource Ghost}" />
 
-				<Label Grid.Column="1"
-                       Text="Private DNS presets"
-                       FontSize="30"
-                       FontAttributes="Bold"
-                       TextColor="White"
-                       VerticalOptions="Center" />
+					<Label Grid.Column="1"
+                           Text="Private DNS presets"
+                           Style="{StaticResource Title}" />
+				</Grid>
+
+				<Border Grid.Row="1"
+                        HeightRequest="1"
+                        Background="{StaticResource HairlineBrush}"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 1" />
 			</Grid>
 
 			<Label x:Name="DnsPresetInfo"
                    Grid.Row="1"
                    Text=""
-                   FontSize="16"
-                   TextColor="#9A9AB2" />
+                   FontSize="15"
+                   TextColor="{StaticResource InkDim}" />
 
 			<ScrollView Grid.Row="2">
-				<VerticalStackLayout x:Name="DnsPresetList" Spacing="10">
+				<Border Style="{StaticResource Card}"
+                        StrokeShape="RoundRectangle 18"
+                        Padding="22,20"
+                        VerticalOptions="Start">
+					<VerticalStackLayout x:Name="DnsPresetList" Spacing="10">
 
-					<!-- The preset buttons are added here in code, above these two. -->
-					<Button x:Name="BtnVpn"
-                            Text="Filter every app on this TV (VPN)"
-                            Clicked="OnVpnClicked"
-                            BackgroundColor="#06B6D4"
-                            TextColor="White"
-                            FontSize="17"
-                            FontAttributes="Bold"
-                            CornerRadius="4"
-                            BorderWidth="0"
-                            Margin="0,14,0,0" />
+						<!-- The preset buttons are added here in code, above these two. -->
+						<Button x:Name="BtnVpn"
+                                Text="Filter every app on this TV (VPN)"
+                                Clicked="OnVpnClicked"
+                                Background="{StaticResource AccentBrush}"
+                                TextColor="#03121C"
+                                FontSize="17"
+                                FontAttributes="Bold"
+                                HeightRequest="50"
+                                CornerRadius="12"
+                                BorderWidth="0"
+                                Margin="0,16,0,0" />
 
-					<Button x:Name="BtnOpenDns"
-                            Text="Turn on Private DNS"
-                            Clicked="OnOpenDnsSettingsClicked"
-                            BackgroundColor="#162036"
-                            TextColor="#E6F1FF"
-                            FontSize="17"
-                            CornerRadius="4"
-                            BorderWidth="0" />
-				</VerticalStackLayout>
+						<Button x:Name="BtnOpenDns"
+                                Text="Turn on Private DNS"
+                                Clicked="OnOpenDnsSettingsClicked"
+                                Style="{StaticResource Ghost}"
+                                FontSize="17"
+                                HeightRequest="50" />
+					</VerticalStackLayout>
+				</Border>
 			</ScrollView>
 		</Grid>
 	</Grid>

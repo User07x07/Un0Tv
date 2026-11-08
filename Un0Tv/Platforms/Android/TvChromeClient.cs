@@ -117,7 +117,12 @@ internal sealed class TvChromeClient : WebChromeClient
                 CloseOwner();
                 return true;
             }
-            return base.ShouldOverrideUrlLoading(view, request);
+            // The request form of this call only exists from Android 7. Older
+            // systems use the older overload, which the base class handles and
+            // which also says "let the page have it".
+            if (OperatingSystem.IsAndroidVersionAtLeast(24))
+                return base.ShouldOverrideUrlLoading(view, request);
+            return false;
         }
 
         private void CloseOwner()

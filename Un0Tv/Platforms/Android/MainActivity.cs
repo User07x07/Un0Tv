@@ -31,6 +31,10 @@ public class MainActivity : MauiAppCompatActivity
 {
     private const int VpnRequest = 4711;
 
+    // The window's own view, measured on every key press to tell whether the
+    // on-screen keyboard is really showing.
+    private AndroidView? _decor;
+
     // The running activity, so the home screen can start the VPN filter.
     public static MainActivity? Current { get; private set; }
 
@@ -85,12 +89,54 @@ public class MainActivity : MauiAppCompatActivity
     // closing a sign-in window works.
     public override bool DispatchKeyEvent(KeyEvent? e)
     {
+        // The app's own letter pad is up: it owns the keys, because its buttons
+        // are the only thing on screen that can be pressed. Back puts it away.
+        if (KeyPad.IsOpen && e is not null)
+        {
+            if (e.Action == KeyEventActions.Down && e.KeyCode == AndroidKeycode.Back)
+            {
+                KeyPad.Hide();
+                TvWebView.HideKeyboard();
+                return true;
+            }
+
+            return base.DispatchKeyEvent(e);
+        }
+
+        // The command panel over a movie is up: the arrows and OK belong to its
+        // own buttons, and Back closes it before the movie is disturbed.
+        if (MediaPanel.IsOpen && e is not null)
+        {
+            if (e.Action == KeyEventActions.Down && e.KeyCode == AndroidKeycode.Back)
+            {
+                MediaPanel.Hide();
+                return true;
+            }
+
+            MediaPanel.Arm();
+            return base.DispatchKeyEvent(e);
+        }
+
         // While the system keyboard is up, the keys belong to the box being
         // typed into: the caret already sits in it on the page, so every key is
         // handed back to the browser the way a normal keyboard would. Back is
         // kept, so it can put the keys away.
-        if (TvWebView.KeyboardVisible && e is not null && e.KeyCode != AndroidKeycode.Back)
+        //
+        // Measured fresh on every press, never remembered: a remembered answer
+        // could stay stuck at "keys are up" when the keyboard never actually
+        // opened, and every arrow press was then swallowed - the remote looked
+        // dead.
+        if (KeysOnScreen() && e is not null && e.KeyCode != AndroidKeycode.Back)
+        {
+            // The keys take the letters, but the arrows still have to move the
+            // highlight underneath: the browser's own focus movement does
+            // nothing on this site, so without this the remote would look dead
+            // for as long as the keys are up.
+            if (e.Action == KeyEventActions.Down)
+                NudgeFromKey(e.KeyCode);
+
             return base.DispatchKeyEvent(e);
+        }
 
         // The startup check is on screen and the site has not loaded yet, so
         // there is no page to drive. The arrows move between the check's own
@@ -119,7 +165,9 @@ public class MainActivity : MauiAppCompatActivity
         }
 
         // The remote's media keys drive the movie player: play, pause, the
-        // play/pause toggle, forward 10 seconds and back 10 seconds.
+        // play/pause toggle, forward 10 seconds and back 10 seconds. They are
+        // always taken, because a frame with no movie simply ignores the
+        // command - and a viewer pressing Pause must never be ignored.
         if (e is not null && e.Action == KeyEventActions.Down)
         {
             var playerAction = e.KeyCode switch
@@ -139,6 +187,22 @@ public class MainActivity : MauiAppCompatActivity
             }
         }
 
+        // A movie on screen: the Left key opens the app's own command panel,
+        // because the player's controls sit inside a player frame the app can
+        // never focus - which is why the remote's buttons did nothing there.
+        //
+        // Checked before the fullscreen branch on purpose: the panel is exactly
+        // what a viewer needs while the picture fills the screen. Fullscreen
+        // counts as "a movie is on", so the panel still opens even if the
+        // player's own report never arrived.
+        if (e is not null && e.Action == KeyEventActions.Down
+            && e.KeyCode == AndroidKeycode.DpadLeft
+            && (TvWebView.OnMoviePage || TvWebView.IsFullscreen))
+        {
+            MediaPanel.Show();
+            return true;
+        }
+
         // A movie filling the screen: Back leaves fullscreen, and every other
         // key belongs to the player's own controls.
         if (TvWebView.IsFullscreen && e is not null
@@ -155,11 +219,7 @@ public class MainActivity : MauiAppCompatActivity
                 case AndroidKeycode.DpadDown:
                 case AndroidKeycode.DpadLeft:
                 case AndroidKeycode.DpadRight:
-                    var dx = e.KeyCode == AndroidKeycode.DpadLeft ? -1
-                           : e.KeyCode == AndroidKeycode.DpadRight ? 1 : 0;
-                    var dy = e.KeyCode == AndroidKeycode.DpadUp ? -1
-                           : e.KeyCode == AndroidKeycode.DpadDown ? 1 : 0;
-                    Page?.MoveFocus(dx, dy);
+                    NudgeFromKey(e.KeyCode);
                     break;
 
                 case AndroidKeycode.DpadCenter:
@@ -171,7 +231,7 @@ public class MainActivity : MauiAppCompatActivity
                 case AndroidKeycode.Back:
                     // Keys covering the page: Back puts them away first, which is
                     // what a viewer expects when they are done searching.
-                    if (TvWebView.KeyboardVisible)
+                    if (KeysOnScreen())
                     {
                         TvWebView.HideKeyboard();
                         break;
@@ -219,23 +279,74 @@ public class MainActivity : MauiAppCompatActivity
         base.OnCreate(savedInstanceState);
         Current = this;
 
-        // The on-screen keyboard needs the window to resize, so the layout
-        // below can tell when it is up and hand the keys over to it.
+        // The on-screen keyboard needs the window to resize, so a key press can
+        // tell it apart from the page by measuring the window.
         Window?.SetSoftInputMode(SoftInput.AdjustResize);
+        _decor = Window?.DecorView;
+    }
 
-        if (Window?.DecorView is AndroidView decor)
+    // The keys are up only while the window really is shorter than the screen.
+    private bool KeysOnScreen() => _decor is not null && KeyboardIsUp(_decor);
+
+    // The same answer, for the web view: after asking Android for its keyboard
+    // it looks here to see whether any keys actually appeared.
+    public static bool SoftKeysUp()
+        => Current?._decor is not null && KeyboardIsUp(Current._decor);
+
+    // The command panel's Back button: leave the fullscreen picture first, then
+    // a sign-in window, then go to the dashboard URL.
+    internal void PanelBack()
+    {
+        if (TvWebView.IsFullscreen)
         {
-            var observer = decor.ViewTreeObserver;
-            if (observer is not null)
-                observer.GlobalLayout += (_, _) => TvWebView.KeyboardVisible = KeyboardIsUp(decor);
+            TvWebView.ExitFullscreen();
+            return;
         }
+
+        if (TvWebView.IsPopupOpen)
+        {
+            TvWebView.ClosePopup();
+            return;
+        }
+
+        // Go to the dashboard URL directly.
+        var page = Page;
+        if (page is not null)
+        {
+            page.LoadDashboard();
+            return;
+        }
+
+        // Fallback: step back inside the site.
+        TvWebView.GoBackPage();
+    }
+
+    // Moves the page's highlight for an arrow key, wherever the key is caught.
+    private static void NudgeFromKey(AndroidKeycode key)
+    {
+        var dx = key == AndroidKeycode.DpadLeft ? -1
+               : key == AndroidKeycode.DpadRight ? 1 : 0;
+        var dy = key == AndroidKeycode.DpadUp ? -1
+               : key == AndroidKeycode.DpadDown ? 1 : 0;
+
+        if (dx == 0 && dy == 0)
+            return;
+
+        Page?.MoveFocus(dx, dy);
     }
 
     private static bool KeyboardIsUp(AndroidView decor)
     {
-        var visible = new Android.Graphics.Rect();
-        decor.GetWindowVisibleDisplayFrame(visible);
-        var hidden = decor.Height - visible.Bottom;
-        return hidden > decor.Height * 0.15;
+        try
+        {
+            var visible = new Android.Graphics.Rect();
+            decor.GetWindowVisibleDisplayFrame(visible);
+            var hidden = decor.Height - visible.Bottom;
+            return hidden > decor.Height * 0.15;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

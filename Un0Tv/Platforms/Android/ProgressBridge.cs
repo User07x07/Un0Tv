@@ -24,11 +24,33 @@ internal sealed class ProgressBridge : Java.Lang.Object
         => Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(
             TvWebView.ShowKeyboard);
 
+    // Called by the player's own frame whenever the movie starts, stops or
+    // goes away. The Left key opens the command panel only while a movie is
+    // on screen, so it keeps moving the highlight everywhere else.
+    [JavascriptInterface]
+    [Export("mediaState")]
+    public void MediaState(string on)
+        => TvWebView.SetMoviePlaying(on == "1");
+
     // Called when the box goes away or the keys are no longer wanted, so the
     // keyboard closes with it.
     [JavascriptInterface]
     [Export("closeKeyboard")]
     public void CloseKeyboard()
-        => Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(
-            TvWebView.HideKeyboard);
+    {
+        Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(() =>
+        {
+            TvWebView.HideKeyboard();
+            KeyPad.Hide();
+        });
+    }
+
+    // Called by PageRoute on every navigation (pushState, popstate, hashchange,
+    // initial load). The app keeps this to decide whether the Left key should
+    // open the movie command panel.
+    [JavascriptInterface]
+    [Export("route")]
+    public void SetRoute(string path)
+        => Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(() =>
+            TvWebView.SetRoute(path));
 }

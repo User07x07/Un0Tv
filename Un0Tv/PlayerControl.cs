@@ -144,6 +144,17 @@ public static class PlayerControl
   window.addEventListener('message', function (event) {
     var d = event.data;
     if (!d) return;
+
+    // The movie's own frame reports whether it has a movie on screen, so the
+    // app knows when the Left key should open its command panel.
+    if (d.__un0tvState) {
+      try {
+        if (window.Un0TvNative && window.Un0TvNative.mediaState)
+          window.Un0TvNative.mediaState(d.__un0tvState.on ? '1' : '0');
+      } catch (e) { }
+      return;
+    }
+
     try {
       if (!VIDFAST.test(new URL(event.origin).hostname)) return;
     } catch (e) { return; }

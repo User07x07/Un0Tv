@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mrowser — cycling home gradient</title>
+<style>
+:root {
+  --page:      #0a0a0c;
+  --panel:     #101014;
+  --hairline:  #23232c;
+  --ink:       #e8e6e3;
+  --muted:     #8a8a94;
+  --dim:       #5c5c66;
+  --brand:     #e50914;
+
+  --serif: ui-serif, "New York", Iowan Old Style, Palatino, Georgia, serif;
+  --mono:  ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Divides every cycle length. 1 = what would ship. */
+  --speed: 1;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 1400px; margin: 0 auto; padding: 48px 32px 96px; }
+
+.masthead { border-bottom: 1px solid var(--hairline); padding-bottom: 28px; margin-bottom: 12px; }
+.masthead h1 {
+  font-family: var(--serif);
+  font-size: clamp(34px, 5vw, 60px);
+  font-weight: 400; letter-spacing: -0.02em; line-height: 1.05;
+  margin: 0 0 14px;
+}
+.masthead h1 em { font-style: italic; color: var(--muted); }
+.standfirst { color: var(--muted); max-width: 68ch; margin: 0 0 6px; }
+.standfirst strong { color: var(--ink); font-weight: 400; }
+.standfirst code { color: var(--ink); }
+
+.controls {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  padding: 14px 0;
+  background: color-mix(in srgb, var(--page) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 40px;
+}
+.ctl {
+  font: inherit; color: var(--muted);
+  background: var(--panel); border: 1px solid var(--hairline);
+  border-radius: 2px; padding: 7px 13px; cursor: pointer;
+  transition: color .12s, border-color .12s;
+}
+.ctl:hover { color: var(--ink); border-color: var(--dim); }
+.ctl:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.ctl[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+.controls .hint { color: var(--dim); margin-left: auto; }
+.speed-group { display: inline-flex; margin-left: 6px; }
+.speed-group .ctl { border-radius: 0; }
+.speed-group .ctl:first-child { border-radius: 2px 0 0 2px; }
+.speed-group .ctl:last-child  { border-radius: 0 2px 2px 0; }
+.speed-group .ctl + .ctl { border-left: none; }
+
+/* ── Sections ─────────────────────────────────────────────────── */
+.section { margin-bottom: 56px; }
+.section-head {
+  display: flex; align-items: baseline; gap: 14px;
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 10px; margin-bottom: 22px;
+}
+.section-head h2 { font-family: var(--serif); font-size: 26px; font-weight: 400; margin: 0; }
+.section-head .q { color: var(--muted); font-size: 12px; margin-left: auto; text-align: right; }
+
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+@media (max-width: 1000px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+.card { display: flex; flex-direction: column; gap: 12px; }
+.card-head { display: flex; align-items: baseline; gap: 10px; }
+.card-name { font-family: var(--serif); font-size: 21px; letter-spacing: -0.01em; }
+.card-note { color: var(--muted); margin-left: auto; text-align: right; font-size: 12px; }
+
+.stage {
+  position: relative; aspect-ratio: 16 / 9; overflow: hidden;
+  border: 1px solid var(--hairline); background: #000;
+  container-type: inline-size; cursor: zoom-in;
+}
+.stage:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* The cycle itself: N stacked two-stop gradients, opacity-crossfaded.
+   Android equivalent is one GradientDrawable whose two colours are
+   lerped by a ValueAnimator — no stacking, no overdraw. */
+.cycle { position: absolute; inset: 0; }
+.cycle span {
+  position: absolute; inset: 0;
+  will-change: opacity;
+}
+
+.spec { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 12px; }
+.spec dt { color: var(--dim); }
+.spec dd { color: var(--muted); margin: 0; }
+
+/* Palette swatch strip, so the colours are legible as data too. */
+.swatches { display: flex; gap: 3px; }
+.swatches i {
+  flex: 1; height: 22px; border-radius: 1px;
+  display: block;
+}
+
+/* ── App mock ─────────────────────────────────────────────────── */
+.app {
+  position: absolute; inset: 0; padding: 4.4cqw;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #fff; display: flex; flex-direction: column;
+  transition: opacity .18s;
+}
+body.bare .app { opacity: 0; }
+.app-head { display: flex; align-items: center; gap: 2.2cqw; margin-bottom: 3.4cqw; }
+.wordmark { font-size: 3.9cqw; font-weight: 700; letter-spacing: -0.01em; }
+.pill {
+  flex: 1; border-radius: 999px; padding: 1.5cqw 2.6cqw;
+  background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.45); font-size: 2.2cqw;
+}
+.chip {
+  border-radius: 3px; padding: 1.5cqw 2.6cqw; font-size: 2.2cqw;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+}
+.gear { font-size: 2.8cqw; opacity: .8; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.4cqw; }
+.tile {
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.10);
+  border-radius: 5px; padding: 2.2cqw;
+  display: flex; flex-direction: column; gap: 1.6cqw;
+}
+.tile.focused { border-color: #fff; box-shadow: 0 0 0 .35cqw rgba(255,255,255,.28); }
+.letter {
+  width: 7.4cqw; height: 7.4cqw; border-radius: 4px;
+  display: grid; place-items: center;
+  font-size: 3.6cqw; font-weight: 700; color: #08080b;
+}
+.tile-name { font-size: 2.1cqw; opacity: .92; }
+
+/* ── Viewer ───────────────────────────────────────────────────── */
+.viewer {
+  position: fixed; inset: 0; z-index: 100; background: #000;
+  display: none; container-type: inline-size; cursor: zoom-out;
+}
+.viewer.open { display: block; }
+.viewer-tag {
+  position: absolute; left: 22px; bottom: 18px; z-index: 2;
+  font-family: var(--mono); font-size: 12px; color: rgba(255,255,255,.55);
+  background: rgba(0,0,0,.5); padding: 6px 11px; border-radius: 2px;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:not(.motion) .cycle span { animation: none !important; }
+}
+body.freeze * { animation-play-state: paused !important; }
+
+footer {
+  margin-top: 24px; padding-top: 24px;
+  border-top: 1px solid var(--hairline);
+  color: var(--dim); font-size: 12px; max-width: 80ch;
+}
+footer p { margin: 0 0 10px; }
+footer code { color: var(--muted); }
+footer strong { color: var(--muted); font-weight: 400; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <h1>The gradient cycles<br><em>two questions before it ships</em></h1>
+    <p class="standfirst">
+      Same flat two-stop gradient as today. Instead of
+      <code>pick(seed)</code> choosing one and holding it forever, the home screen starts on one
+      palette and lerps its two colours toward the next, forever.
+      In the app that is <strong>one GradientDrawable</strong> and
+      <strong>one ValueAnimator</strong> — no extra layers, no overdraw.
+      The stacked-and-crossfaded layers below are just how a browser fakes it.
+    </p>
+    <p class="standfirst">
+      Click a panel to fill the screen. Esc closes.
+    </p>
+  </header>
+
+  <div class="controls">
+    <button class="ctl" id="toggle-ui"     aria-pressed="true">App overlay</button>
+    <button class="ctl" id="toggle-motion" aria-pressed="true">Motion</button>
+    <span class="speed-group" role="group" aria-label="Playback speed">
+      <button class="ctl spd" data-speed="1"  aria-pressed="true">1× shipped</button>
+      <button class="ctl spd" data-speed="6"  aria-pressed="false">6×</button>
+      <button class="ctl spd" data-speed="20" aria-pressed="false">20×</button>
+    </span>
+    <span class="hint">Start at 20× to see the cycle, confirm at 1×</span>
+  </div>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Question one — are the palettes far enough apart?</h2>
+      <span class="q">Both cycle all six, 20s per step</span>
+    </div>
+    <div class="grid-2" id="row-palette"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Question two — what cadence?</h2>
+      <span class="q">All using whichever palette set wins above</span>
+    </div>
+    <div class="grid-3" id="row-cadence"></div>
+  </section>
+
+  <footer>
+    <p><strong>Why the widened set exists.</strong> The six shipped palettes sit within about
+    6% of each other on every channel — <code>#1A0E12</code> against <code>#0E1A22</code> is a
+    16/255 difference at most. Spread over a 20-second fade that is below the perceptual floor:
+    the animator runs, the screen looks static. Widening only touches the <em>bottom</em> stop;
+    the top stays near-black so text at the top of the screen keeps its contrast.</p>
+    <p><strong>Cost.</strong> Two <code>ArgbEvaluator</code>-style lerps and a
+    <code>GradientDrawable.setColors()</code> per tick. At 10fps that is nothing — the shader is
+    rebuilt, not recomposited, and there is exactly one full-screen layer either way. This is the
+    cheapest motion of anything considered.</p>
+    <p><strong>One requirement regardless.</strong> The animator has to stop when the home overlay
+    is hidden. <code>HomeView</code> just goes <code>GONE</code> while you browse or watch, so an
+    animator left running would keep ticking behind the WebView and through playback.
+    Start in <code>show()</code>, stop in <code>hide()</code>.</p>
+  </footer>
+</div>
+
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Full-screen preview">
+  <div class="viewer-tag"></div>
+</div>
+
+<style id="cycle-keyframes"></style>
+
+<script>
+/* The six shipped palettes, verbatim from HomeBackgrounds.kt */
+const CURRENT = [
+  ['#0B0B0F', '#1A0E12', 'ember'],
+  ['#080F14', '#0E1A22', 'deep sea'],
+  ['#100A18', '#1C1024', 'violet'],
+  ['#0A0F0C', '#12201A', 'pine'],
+  ['#120C0A', '#231310', 'rust'],
+  ['#0C0C0C', '#1B1B20', 'graphite']
+];
+
+/* Same six hues, same near-black top stop, bottom stop pushed until the
+   step between palettes is actually visible. */
+const WIDENED = [
+  ['#0B0B0F', '#2E0D16', 'ember'],
+  ['#080F14', '#0C2438', 'deep sea'],
+  ['#100A18', '#261043', 'violet'],
+  ['#0A0F0C', '#0E2C1F', 'pine'],
+  ['#120C0A', '#38180D', 'rust'],
+  ['#0C0C0C', '#20202C', 'graphite']
+];
+
+const TILES = [
+  { letter: 'Y', name: 'YouTube', hue: 0   },
+  { letter: 'G', name: 'Google',  hue: 214 },
+  { letter: 'A', name: 'Archive', hue: 145 },
+  { letter: 'V', name: 'Vimeo',   hue: 275 }
+];
+
+/* Largest per-channel distance between consecutive palettes — the number
+   that decides whether any of this is perceptible. */
+function maxStep(set) {
+  const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  let worst = 0;
+  for (let i = 0; i < set.length; i++) {
+    const a = hex(set[i][1]), b = hex(set[(i + 1) % set.length][1]);
+    worst = Math.max(worst, ...a.map((v, k) => Math.abs(v - b[k])));
+  }
+  return worst;
+}
+
+/* One @keyframes per (layer count, fade width). `hold` is the fraction of
+   each palette's slot spent at full opacity before the fade begins. */
+function keyframesFor(name, n, holdFraction) {
+  const slot = 100 / n;
+  const fade = slot * (1 - holdFraction);
+  const solidUntil = slot - fade;
+  return `@keyframes ${name} {
+    0%   { opacity: 1 }
+    ${solidUntil.toFixed(3)}% { opacity: 1 }
+    ${slot.toFixed(3)}% { opacity: 0 }
+    ${(100 - fade).toFixed(3)}% { opacity: 0 }
+    100% { opacity: 1 }
+  }`;
+}
+
+const VARIANTS = [
+  { key: 'cur',   set: CURRENT, cycle: 120, hold: 0,   row: 'row-palette',
+    name: 'Current palettes', note: 'What ships today, animated' },
+  { key: 'wide',  set: WIDENED, cycle: 120, hold: 0,   row: 'row-palette',
+    name: 'Widened palettes', note: 'Bottom stop pushed' },
+
+  { key: 'morph', set: WIDENED, cycle: 120, hold: 0,   row: 'row-cadence',
+    name: 'Always moving', note: '20s per step, never rests' },
+  { key: 'hold',  set: WIDENED, cycle: 120, hold: .62, row: 'row-cadence',
+    name: 'Rest, then turn', note: '12s held, 8s fade' },
+  { key: 'slow',  set: WIDENED, cycle: 270, hold: 0,   row: 'row-cadence',
+    name: 'Half speed', note: '45s per step, never rests' }
+];
+
+function appMarkup() {
+  const tiles = TILES.map((t, i) => `
+    <div class="tile${i === 0 ? ' focused' : ''}">
+      <div class="letter" style="background: hsl(${t.hue} 55% 62%)">${t.letter}</div>
+      <div class="tile-name">${t.name}</div>
+    </div>`).join('');
+  return `
+    <div class="app">
+      <div class="app-head">
+        <div class="wordmark">mrowser</div>
+        <div class="pill">Enter address</div>
+        <div class="chip">History</div>
+        <div class="gear">⚙</div>
+      </div>
+      <div class="tiles">${tiles}</div>
+    </div>`;
+}
+
+function cycleMarkup(v) {
+  const n = v.set.length;
+  const slot = v.cycle / n;
+  return `<div class="cycle">` + v.set.map(([top, bottom], i) => `
+    <span style="
+      background: linear-gradient(${top}, ${bottom});
+      animation: kf-${v.key} calc(${v.cycle}s / var(--speed)) linear infinite;
+      animation-delay: calc(${(-i * slot).toFixed(3)}s / var(--speed));
+    "></span>`).join('') + `</div>`;
+}
+
+/* Inject one keyframe rule per variant. */
+document.getElementById('cycle-keyframes').textContent =
+  VARIANTS.map(v => keyframesFor(`kf-${v.key}`, v.set.length, v.hold)).join('\n');
+
+VARIANTS.forEach(v => {
+  const perStep = (v.cycle / v.set.length).toFixed(0);
+  const card = document.createElement('article');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="card-head">
+      <span class="card-name">${v.name}</span>
+      <span class="card-note">${v.note}</span>
+    </div>
+    <div class="stage" tabindex="0" role="button" data-key="${v.key}"
+         aria-label="Enlarge ${v.name}">
+      ${cycleMarkup(v)}
+      ${appMarkup()}
+    </div>
+    <div class="swatches">${v.set.map(p =>
+      `<i style="background: linear-gradient(90deg, ${p[0]}, ${p[1]})" title="${p[2]}"></i>`
+    ).join('')}</div>
+    <dl class="spec">
+      <dt>Step</dt><dd>${perStep}s per palette · ${v.cycle}s full loop</dd>
+      <dt>Motion</dt><dd>${v.hold ? `${(v.cycle / v.set.length * v.hold).toFixed(0)}s at rest, then ${(v.cycle / v.set.length * (1 - v.hold)).toFixed(0)}s fade` : 'continuous lerp, never at rest'}</dd>
+      <dt>Max step</dt><dd>${maxStep(v.set)}/255 per channel between neighbours</dd>
+    </dl>`;
+  document.getElementById(v.row).appendChild(card);
+});
+
+/* ── Viewer ── */
+const viewer = document.getElementById('viewer');
+let lastFocused = null;
+
+function openStage(stage) {
+  const v = VARIANTS.find(x => x.key === stage.dataset.key);
+  lastFocused = stage;
+  viewer.innerHTML = `${cycleMarkup(v)}${appMarkup()}
+    <div class="viewer-tag">${v.name} — ${v.note} — click or press Esc to close</div>`;
+  viewer.classList.add('open');
+}
+
+function closeViewer() {
+  viewer.classList.remove('open');
+  viewer.innerHTML = '<div class="viewer-tag"></div>';
+  if (lastFocused) lastFocused.focus();
+}
+
+document.addEventListener('click', e => {
+  if (viewer.contains(e.target)) { closeViewer(); return; }
+  const stage = e.target.closest('.stage');
+  if (stage) openStage(stage);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && viewer.classList.contains('open')) { closeViewer(); return; }
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const stage = e.target.closest('.stage');
+  if (stage) { e.preventDefault(); openStage(stage); }
+});
+
+/* ── Toolbar ── */
+const uiBtn = document.getElementById('toggle-ui');
+uiBtn.addEventListener('click', () => {
+  const bare = document.body.classList.toggle('bare');
+  uiBtn.setAttribute('aria-pressed', String(!bare));
+});
+
+const motionBtn = document.getElementById('toggle-motion');
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  document.body.classList.add('freeze');
+  motionBtn.setAttribute('aria-pressed', 'false');
+  motionBtn.textContent = 'Motion (off — your OS asks for less)';
+}
+motionBtn.addEventListener('click', () => {
+  const frozen = document.body.classList.toggle('freeze');
+  document.body.classList.toggle('motion', !frozen);
+  motionBtn.setAttribute('aria-pressed', String(!frozen));
+  motionBtn.textContent = 'Motion';
+});
+
+document.querySelectorAll('.spd').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.documentElement.style.setProperty('--speed', btn.dataset.speed);
+    document.querySelectorAll('.spd').forEach(b =>
+      b.setAttribute('aria-pressed', String(b === btn)));
+  });
+});
+</script>
+</body>
+</html>

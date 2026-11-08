@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Scrolls: the rows outgrow a 1080p TV at 320dpi (540dp tall). A focused row is scrolled
+     into view by the ScrollView itself, so the D-pad needs nothing extra. Rows sit in three
+     sections whose labels are not focusable; a toggle row shows a switch (switch_bg), a picker
+     row its value and a chevron. Each row is its setting's only focus and click target. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="14dp"
+            android:text="@string/settings"
+            android:textColor="@color/on_surface"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <TextView
+            style="@style/Mrowser.SettingsSection"
+            android:text="@string/settings_section_playback" />
+        <LinearLayout
+            android:id="@+id/settingsAutoOpenRow"
+            style="@style/Widget.Mrowser.SettingsRow">
+
+            <TextView
+                style="@style/Mrowser.SettingsLabel"
+                android:text="@string/auto_open_title" />
+
+            <View
+                style="@style/Widget.Mrowser.SettingsSwitch" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/settingsFrameRateRow"
+            style="@style/Widget.Mrowser.SettingsRow">
+
+            <TextView
+                style="@style/Mrowser.SettingsLabel"
+                android:text="@string/match_frame_rate_title" />
+
+            <View
+                style="@style/Widget.Mrowser.SettingsSwitch" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/settingsResolutionRow"
+            style="@style/Widget.Mrowser.SettingsRow">
+
+            <TextView
+                style="@style/Mrowser.SettingsLabel"
+                android:text="@string/match_resolution_title" />
+
+            <View
+                style="@style/Widget.Mrowser.SettingsSwitch" />
+        </LinearLayout>
+        <TextView
+            style="@style/Mrowser.SettingsSection"
+            android:text="@string/settings_section_browsing" />
+        <LinearLayout
+            android:id="@+id/settingsPopupRow"
+            style="@style/Widget.Mrowser.SettingsRow">
+
+            <TextView
+                style="@style/Mrowser.SettingsLabel"
+                android:text="@string/block_popups_title" />
+
+            <View
+                style="@style/Widget.Mrowser.SettingsSwitch" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/settingsAdsRow"
+            style="@style/Widget.Mrowser.SettingsRow">
+
+            <TextView
+                style="@style/Mrowser.SettingsLabel"
+                android:text="@string/block_ads_title" />
+
+            <View
+                style="@style/Widget.Mrowser.SettingsSwitch" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/settingsCursorRow"
+            style="@style/Widget.Mrowser.SettingsRow">
+
+            <TextView
+                style="@style/Mrowser.SettingsLabel"
+                android:text="@string/cursor_speed_title" />
+
+            <TextView
+                android:id="@+id/settingsCursorValue"
+                style="@style/Mrowser.SettingsValue" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/settingsListsRow"
+            style="@style/Widget.Mrowser.SettingsRow">
+
+            <TextView
+                style="@style/Mrowser.SettingsLabel"
+                android:text="@string/ad_block_lists_title" />
+
+            <TextView
+                android:id="@+id/settingsListsValue"
+                style="@style/Mrowser.SettingsValue" />
+        </LinearLayout>
+        <TextView
+            style="@style/Mrowser.SettingsSection"
+            android:text="@string/settings_section_favorites" />
+        <LinearLayout
+            android:id="@+id/settingsExportRow"
+            style="@style/Widget.Mrowser.SettingsRow">
+
+            <TextView
+                style="@style/Mrowser.SettingsLabel"
+                android:text="@string/export_favorites_title" />
+
+            <TextView
+                style="@style/Mrowser.SettingsValue"
+                android:drawablePadding="0dp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/settingsImportRow"
+            style="@style/Widget.Mrowser.SettingsRow">
+
+            <TextView
+                style="@style/Mrowser.SettingsLabel"
+                android:text="@string/import_favorites_title" />
+
+            <TextView
+                style="@style/Mrowser.SettingsValue"
+                android:drawablePadding="0dp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

@@ -28,9 +28,9 @@ public sealed class LogEntry : INotifyPropertyChanged
 
     public string Badge => Blocked ? "\u2715" : "\u2713";
 
-    public string BadgeColor => Blocked ? "#F0736A" : "#4CD07D";
+    public string BadgeColor => Blocked ? "#F87171" : "#4ADE80";
 
-    public string BadgeBg => Blocked ? "#2C1618" : "#132619";
+    public string BadgeBg => Blocked ? "#2E1618" : "#122C20";
 
     public string Detail => $"{Label} \u00b7 {Hits:N0} {(Hits == 1 ? "lookup" : "lookups")} \u00b7 {When}";
 

@@ -13,8 +13,9 @@ namespace Un0Tv;
 // on-screen keyboard, and the box is kept as the place the letters go - a TV
 // has no touch screen, so a box alone can never raise Android's keyboard.
 //
-// The highlight is a thin blue outline drawn over the item, not a heavy
-// glowing box, and it is hidden while a movie fills the screen.
+// The highlight is a rounded cyan ring drawn over the item, with a soft glow
+// and a faint white hairline inside it so it stays readable over a bright
+// poster. It is hidden while a movie fills the screen.
 //
 // Speed matters: the list of clickable things is built at most once every
 // 0.9s, the outline is moved with a transform (no layout work), and scrolling
@@ -102,8 +103,6 @@ public static class DpadNav
   // Could a viewer press this?
   function clickable(el) {
     var tag = (el.tagName || '').toLowerCase();
-    // The Continue watching cards are ours, so they can always be pressed.
-    if (el.hasAttribute('data-un0tv-continue')) return true;
     if (tag === 'button' || tag === 'select' || tag === 'textarea' || tag === 'summary') return true;
     if (tag === 'input') {
       var t = (el.type || 'text').toLowerCase();
@@ -142,11 +141,6 @@ public static class DpadNav
     var out = [];
     for (var i = 0; i < list.length; i++) {
       var a = list[i], keep = true;
-      // One card is one stop: its picture and its words belong to it.
-      if (a.el.hasAttribute('data-un0tv-continue')) { out.push(a); continue; }
-      var inCard = false;
-      try { inCard = !!a.el.closest('[data-un0tv-continue]'); } catch (e) { inCard = false; }
-      if (inCard) continue;
       var area = Math.max(1, a.r.width * a.r.height);
       for (var j = 0; j < list.length; j++) {
         if (i === j) continue;
@@ -204,20 +198,7 @@ public static class DpadNav
   }
 
   function first() {
-    // Where the viewer left off is the first thing the ring should find - the
-    // Continue watching cards. They are looked for on the page itself as well,
-    // because the strip is drawn after the list was last built.
-    try {
-      var card = document.querySelector('[data-un0tv-continue]');
-      if (card) {
-        var rc = rectOf(card);
-        if (usable(rc)) return { el: card, r: rc };
-      }
-    } catch (e) { }
-    for (var c = 0; c < items.length; c++) {
-      if (items[c].el.hasAttribute('data-un0tv-continue'))
-        return items[c];
-    }
+    // The top-left item on the page is where the ring starts.
     var best = null, bestTop = 1e9, bestLeft = 1e9;
     for (var i = 0; i < items.length; i++) {
       var r = seen(items[i]);
@@ -244,9 +225,10 @@ public static class DpadNav
       box.setAttribute('data-un0tv-own', '1');
       box.style.cssText =
         'position:fixed;left:0;top:0;pointer-events:none;z-index:2147483600;'
-        + 'box-sizing:border-box;border:3px solid #4da3ff;border-radius:10px;'
-        + 'box-shadow:0 0 0 2px rgba(0,0,0,.55),0 0 14px rgba(77,163,255,.7);'
-        + 'transition:transform .1s linear,width .1s linear,height .1s linear;'
+        + 'box-sizing:border-box;border:3px solid #7DD3FC;border-radius:12px;'
+        + 'box-shadow:0 0 0 2px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.35),'
+        + '0 0 18px rgba(56,189,248,.55),0 0 2px rgba(125,211,252,.9);'
+        + 'transition:transform .1s ease-out,width .1s ease-out,height .1s ease-out;'
         + 'will-change:transform;display:none;';
       (document.body || document.documentElement).appendChild(box);
     }
@@ -434,14 +416,12 @@ public static class DpadNav
           cur.focus({ preventScroll: true });
       } catch (e) { }
     },
-    // The Continue strip is drawn after the page has settled, so it asks the
-    // ring to move onto the first card once - and only while the viewer has not
-    // chosen anything yet, so their own moving around is left alone.
+    // Puts the ring on the first item of a freshly loaded page - and only while
+    // the viewer has not chosen anything yet, so their own moving around is
+    // left alone.
     homeIfNothing: function () {
       try {
         if (moved) return;
-        if (cur && cur.isConnected && cur.hasAttribute
-            && cur.hasAttribute('data-un0tv-continue')) return;
         ensure();
         var f = first();
         if (f) setCur(f);

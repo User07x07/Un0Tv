@@ -43,9 +43,10 @@ Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. Th
 | **Activity log** | Reached with **Back** from the home screen: what was looked up and whether it got through, newest first, with an All / Blocked tab. |
 | **D-pad navigation** | The remote's arrows move a moving highlight over the site's clickable items; the centre button presses the highlighted one. |
 | **Watch progress** | The player reports its time, the app saves it on the TV, and the same title resumes where the viewer stopped. |
-| **Continue watching** | The home screen shows the last three titles left part way through, and a matching strip is drawn inside the site's own library. Both reopen the title and seek to the saved spot. |
-| **Media keys** | **Play**, **Pause**, **Play/Pause**, fast-forward and rewind on the remote drive the player through its own message API. |
-| **Search typing** | OK on the search box puts the caret in the box and raises the TV's own keyboard, so a film can be typed with the remote. |
+| **Continue watching** | The home screen shows the last three titles left part way through; pressing one reopens the title and seeks to the saved spot. The site's own library keeps its own history, so nothing is drawn over it. |
+| **Media keys** | **Play**, **Pause**, **Play/Pause**, fast-forward and rewind on the remote drive the movie directly inside the player's own frame, even when it is nested two frames deep. |
+| **Movie panel** | **Left** on a movie opens a small panel with Back, Play and Pause — real buttons the D-pad can reach, since the player's own controls sit in a frame the app cannot focus. It closes itself after a few seconds so nothing covers the picture. |
+| **Search typing** | OK on the search box puts the caret in the box and raises the TV's own keyboard; if the TV has none, the app raises its own letter pad, which the D-pad always reaches. |
 | **Advert filtering** | Three layers: HaGeZi's Multi PRO list (~214,000 domains) plus a built-in host list on every network request, and an in-page cleaner that runs inside every frame, including the movie player's own. |
 | **Pop-up policy** | The movie player's "can I open a pop-up?" check passes silently, while advert windows are refused and sign-in windows are allowed. |
 | **Auto play** | Landing on a watch page presses the site's own play control, then lifts the mute so the film starts with sound. |
@@ -72,8 +73,11 @@ flowchart TD
     E --> G("AdCleanupScript<br/>in every frame")
     E --> N("DpadNav<br/>moves the highlight")
     E --> P("PlayerControl<br/>resume, media keys")
-    P --> Q("WatchProgress<br/>kept on the TV")
+    P --> V("VideoControl<br/>drives the movie in every frame")
+    V --> Q("WatchProgress<br/>kept on the TV")
     Q --> H
+    V --> N2("MediaPanel<br/>Back · Play · Pause")
+    N2 --> I
     G --> I("Clean playback")
     N --> I
 ```
@@ -104,7 +108,8 @@ The home screen has three layer buttons, the way Repel lays out its protection:
 |---|---|---|
 | **Ad and tracker filter** | `ON` / `OFF` | Turns the app's own filtering on or off. Off means nothing is filtered at all — handy if a film refuses to start and you want to rule the blocker out. |
 | **HaGeZi Multi PRO list** | `Get` / `Update` | Fetches the ~214,000-domain list (around 30 MB, kept on the TV), or refreshes it later. |
-| **Private DNS** | `Open` | Opens the TV's own settings. Android does not let one app change another app's DNS, so this takes you to the screen where you can. Setting it to `dns.adguard.com` blocks adverts in **every** app on the TV, not just Un0Tv. |
+| **Private DNS** | `Open` | Opens the app's presets screen: eight resolvers (AdGuard, NextDNS, Mullvad, Quad9 and more). Where Android allows it, the app switches Private DNS itself; otherwise it copies the name and opens the TV's own Private DNS page. |
+| **Whole-TV VPN** | `Start` / `Stop` | Also on the presets screen: the app's own local VPN (`DnsFilterService`) filters adverts in **every** app on the TV, not just Un0Tv. Android asks for its one-time permission the first time. |
 
 The shield turns green and says **Protected** when the filter is on. The counters and the "3 of 3 layers on" wording are deliberately gone: this is a player, not a dashboard, so the screen shows only what has to be pressed. **Back** opens the log: one row per address, `Blocked` or `Allowed`, with what it was and how long ago. `Blocked` shows only the refused ones.
 
@@ -139,30 +144,37 @@ Browsers only allow a video to start by itself while it is muted, so the player 
 ## Project layout
 
 ```
+Un0Tv.slnx                          The solution: one project, Un0Tv
+version.json                        Base version for Nerdbank.GitVersioning (repo root)
 Un0Tv/
 ├── MainPage.xaml / .xaml.cs        Home dashboard, Activity log, DNS presets, the browser
 ├── Activity.cs                     The live counters and the activity rows
 ├── WatchProgress.cs                The saved titles behind Continue watching
-├── DnsPresets.cs                   The DNS names offered on the presets screen
+├── DnsPresets.cs                   The DNS presets and the VPN filter's on/off state
 ├── Hagezi.cs                       The big block list: download, parse, match
-├── version.json                    Base version for Nerdbank.GitVersioning
 ├── PageScripts.cs                  Auto play script injected after each load
 ├── DpadNav.cs                      The moving highlight and its arrow logic
 ├── PlayerControl.cs                Watch progress and the remote's media keys
-├── ContinueNav.cs                  The Continue watching strip inside the site
 ├── FieldInput.cs                   Caret into the search box, then the TV keyboard
-└── Platforms/Android/
-    ├── MainActivity.cs             Remote keys, fullscreen, Back, keyboard routing
-    ├── AndroidManifest.xml         TV features and banner
-    ├── TvWebView.cs                Native view setup, pop-up window, fullscreen, script install
-    ├── TvChromeClient.cs           Pop-up routing, fullscreen callbacks
-    ├── TvWebViewClient.cs          Request hook for the filter
-    ├── RequestFilter.cs            Keep list, short block list, the switch check
-    ├── ProgressBridge.cs           The page's way back in: save progress, focus, keyboard
-    ├── DnsFilterService.cs         The local VPN that filters every app on the TV
-    ├── PopupGuard.cs               Which pop-up windows are allowed
-    ├── AdCleanupScript.cs          In-frame advert cleaner
-    └── AudioAutoplay.cs            Sound-on autoplay inside the player
+├── PageRoute.cs                    Tells the app which page of the site is on screen
+├── MauiProgram.cs · App · AppShell The app's start-up and its Shell
+├── Platforms/Android/
+│   ├── MainActivity.cs             Remote keys, fullscreen, Back, keyboard routing
+│   ├── MainApplication.cs          The application entry MAUI calls
+│   ├── AndroidManifest.xml         TV features and banner
+│   ├── TvWebView.cs                Native view setup, pop-up window, fullscreen, script install
+│   ├── TvChromeClient.cs           Pop-up routing, fullscreen callbacks
+│   ├── TvWebViewClient.cs          Request hook for the filter
+│   ├── RequestFilter.cs            Keep list, short block list, the switch check
+│   ├── ProgressBridge.cs           The page's way back in: progress, route, focus, keyboard
+│   ├── VideoControl.cs             Plays, pauses and seeks the movie inside every frame
+│   ├── MediaPanel.cs               The Back / Play / Pause panel the Left key opens over a movie
+│   ├── KeyPad.cs                   The app's own letter pad for TVs with no keyboard
+│   ├── DnsFilterService.cs         The local VPN that filters every app on the TV
+│   ├── PopupGuard.cs               Which pop-up windows are allowed
+│   ├── AdCleanupScript.cs          In-frame advert cleaner
+│   └── AudioAutoplay.cs            Sound-on autoplay inside the player
+└── Platforms/Windows/              A Windows head for developing on the PC; the TV build is Android
 ```
 
 ---
@@ -263,10 +275,11 @@ If the TV says **"App not installed"**:
 
 | Key | What happens |
 |---|---|
-| **Up / Down / Left / Right** | Moves the highlight to the nearest clickable item in that direction |
+| **Up / Down / Right** | Moves the highlight to the nearest clickable item in that direction |
+| **Left** | On a movie page, opens the command panel (Back, Play, Pause); anywhere else, moves the highlight left |
 | **Center / Enter** | Presses the highlighted item; on the search box it raises the TV's keyboard |
 | **Play / Pause / Play-Pause** | Starts, pauses, or toggles the video on the site |
-| **Fast-forward / Rewind** | Jumps forward or back in the video through the player's own message API |
+| **Fast-forward / Rewind** | Jumps forward or back in the video, inside the player's own frame |
 | **Back** | Puts the keyboard away, leaves fullscreen, closes the sign-in window, steps one page back, opens the Activity log from the home screen, or closes the app |
 
 There is no control card over the video: the media keys above are all a viewer needs, so nothing covers the picture.
@@ -294,9 +307,9 @@ Current version: **1.5.0** (Android version code **6**).
 
 - **The player's own frame cannot be styled.** The site is never redrawn natively, so its layout on a TV is exactly the layout a phone browser would get.
 - **Advert covers change.** The in-frame cleaner works by matching wording, corners and shapes. A cover with entirely new wording can slip through until it is added.
-- **The ad filter app's switch is not automatic.** Android will not let one app turn on another app's filter. The startup gate verifies it and opens the right screen; the final toggle is yours to press.
+- **Private DNS may need your hands.** Android lets only system apps switch Private DNS, so the app tries first and usually hands you to the TV's own page with the name copied. Its own VPN filter, though, is started by the app — Android just asks for its one-time permission.
 - **Burning-in is forever.** A logo or QR encoded into the video picture itself is part of the film, so no layer can remove it.
-- **Typing depends on the TV.** The keyboard shown for the search box is Android's own. Some TVs only raise it after a real touch, and the app puts the caret in by script, so on such a TV the keys may not appear. Nothing else breaks: the search box still takes text from any keyboard the TV does offer.
+- **Typing depends on the TV.** The app first asks for Android's own keyboard; if the TV never raises one, it raises its own letter pad instead, so search always has a way to take text. Some TVs only show their keyboard after a real touch, and on those the app's own pad appears.
 - **Only one site.** The address lives in `MainPage.xaml.cs` as `SiteUrl`. The scripts that press play and clean covers are tuned to that site's markup.
 
 ---

@@ -23,10 +23,6 @@ internal static class TvWebView
 
     public static bool IsPopupOpen => Popup is not null;
 
-    // Set by the activity while the on-screen keyboard is up, so the remote's
-    // keys go to the keyboard instead of the page.
-    public static bool KeyboardVisible { get; set; }
-
     public static void SetupMain(AndroidWebView view, WebViewHandler handler)
     {
         Main = view;
@@ -86,9 +82,14 @@ internal static class TvWebView
             settings.UserAgentString = userAgent;
         }
 
+        // The cookie manager is missing on a very few devices. Without it the
+        // page still works, it just forgets who is signed in.
         var cookies = CookieManager.Instance;
-        cookies.SetAcceptCookie(true);
-        cookies.SetAcceptThirdPartyCookies(view, true);
+        if (cookies is not null)
+        {
+            cookies.SetAcceptCookie(true);
+            cookies.SetAcceptThirdPartyCookies(view, true);
+        }
 
         InstallAdCleanup(view);
     }
@@ -139,6 +140,15 @@ internal static class TvWebView
                 PlayerControl.Js,
                 new[] { "*" });
 
+            // The movie's own video element, driven directly in EVERY frame.
+            // The player builds its video with a blob: address, which only
+            // exists inside the player's frame - so the commands go to the
+            // video element there instead of through the site's API.
+            AndroidX.WebKit.WebViewCompat.AddDocumentStartJavaScript(
+                view,
+                VideoControl.Js,
+                new[] { "*" });
+
             // D-pad navigation: the site has no TV navigation of its own, so
             // the page needs a highlight the arrows can move.
             AndroidX.WebKit.WebViewCompat.AddDocumentStartJavaScript(
@@ -153,11 +163,10 @@ internal static class TvWebView
                 FieldInput.Js,
                 new[] { "*" });
 
-            // Continue watching inside the site's own library, drawn from the
-            // progress the player has already saved.
+            // Page route reporter: tells the app which site page is on screen.
             AndroidX.WebKit.WebViewCompat.AddDocumentStartJavaScript(
                 view,
-                ContinueNav.Js,
+                PageRoute.Js,
                 new[] { "*" });
         }
         catch
@@ -202,17 +211,24 @@ internal static class TvWebView
         // not come from a touch on the box".
         imm.ShowSoftInput(view, ShowFlags.Implicit);
 
-        // Known at once, so the keys pressed right after OK already reach the
-        // box. The activity's own layout check corrects this either way.
-        KeyboardVisible = true;
+        // Many TVs have no keyboard at all, and Android only shows its own
+        // after a real touch. So the app watches: if no keys appeared, it
+        // raises its own letter pad instead, which the D-pad always reaches.
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(600);
+            Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (!MainActivity.SoftKeysUp())
+                    KeyPad.Show();
+            });
+        });
     }
 
     // Puts the keys away again. Back does this as well, so the viewer can never
     // be left with keys covering the page and no way out.
     public static void HideKeyboard()
     {
-        KeyboardVisible = false;
-
         var view = Popup ?? Main;
         if (view is null)
             return;
@@ -226,11 +242,7 @@ internal static class TvWebView
            as Android.Views.InputMethods.InputMethodManager;
 
     internal static void SetPopup(AndroidWebView? popup)
-    {
-        Popup = popup;
-        if (popup is null)
-            KeyboardVisible = false;
-    }
+        => Popup = popup;
 
     // True while a movie is playing in the fullscreen layer.
     public static bool IsFullscreen => _client?.IsFullscreen == true;
@@ -238,16 +250,87 @@ internal static class TvWebView
     // Leaves the fullscreen video and drops back to the page.
     public static void ExitFullscreen() => _client?.EndFullscreen();
 
-    // Sends one movie command (play, pause, toggle, forward or back) to the
-    // player script on the page. The action is always one of those fixed words.
+    // True while a movie is on screen, as reported by the player's own frame.
+    // The Left key opens the command panel only then, because off a movie the
+    // Left key must keep moving the highlight.
+    public static bool MoviePlaying { get; private set; }
+
+    // The site's current route (path + query). Null until the first report.
+    public static string? CurrentRoute { get; private set; }
+
+    // True when the current route looks like a movie player page.
+    public static bool OnMoviePage
+        => CurrentRoute is not null
+          && (CurrentRoute.Contains("/watch")
+              || CurrentRoute.Contains("/play")
+              || CurrentRoute.Contains("/movie")
+              || CurrentRoute.Contains("/episode"));
+
+    internal static void SetMoviePlaying(bool on) => MoviePlaying = on;
+
+    // Called by PageRoute through Un0TvNative.route()
+    internal static void SetRoute(string path)
+    {
+        CurrentRoute = path;
+        System.Diagnostics.Debug.WriteLine("[Un0Tv] Route: " + path);
+    }
+
+    // Sends one movie command (play, pause, toggle, forward or back) into the
+    // player's own frame. The action is always one of those fixed words.
+    //
+    // The site's own PostMessage API is not used for this any more: the movie
+    // is built with a blob: address inside the player's frame, so only that
+    // frame can drive it. VideoControl sits in every frame, acts on the video
+    // element, and passes the command on to the frames below it - so a player
+    // nested two frames deep still hears it.
     public static void PlayerCommand(string action)
     {
         var view = Main;
         if (view is null)
             return;
 
-        view.EvaluateJavascript(
-            "if(window.__un0tvPlayer){window.__un0tvPlayer." + action + "();}", null);
+        var js = "(function(){var m={__un0tvCmd:'" + action + "',__un0tvHop:1};"
+               + "try{var f=document.querySelectorAll('iframe');"
+               + "for(var i=0;i<f.length;i++){f[i].contentWindow.postMessage(m,'*');}}catch(e){}"
+               + "try{if(window.__un0tvPlayer&&window.__un0tvPlayer." + action + ")"
+               + "window.__un0tvPlayer." + action + "();}catch(e){}})();";
+
+        view.EvaluateJavascript(js, null);
+    }
+
+    // Takes the page's cyan highlight away while the app's own panels are up.
+    public static void ClearHighlight()
+        => Eval("if(window.__un0tvNav){window.__un0tvNav.clear();}");
+
+    // Types one letter into the search box the page has in focus. The box is
+    // asked for again first, because a movie page may have moved under it while
+    // the pad was being used.
+    public static void TypeText(string text)
+        => Eval("if(window.__un0tvNav){window.__un0tvNav.refocus();}"
+                + "if(window.__un0tvField){window.__un0tvField.insert('"
+                + text.Replace("\\", "\\\\").Replace("'", "\\'") + "');}");
+
+    public static void EraseText()
+        => Eval("if(window.__un0tvField){window.__un0tvField.backspace();}");
+
+    public static void SubmitField()
+        => Eval("if(window.__un0tvField){window.__un0tvField.submit();}");
+
+    // Steps back one page inside the site, used by the panel's Back button.
+    public static void GoBackPage()
+    {
+        var view = Main;
+        try
+        {
+            if (view is not null && view.CanGoBack())
+                view.GoBack();
+        }
+        catch { }
+    }
+
+    private static void Eval(string js)
+    {
+        try { Main?.EvaluateJavascript(js, null); } catch { }
     }
 
     public static void ClosePopup()

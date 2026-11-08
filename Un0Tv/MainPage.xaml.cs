@@ -134,18 +134,18 @@ public partial class MainPage : ContentPage
         var protectedNow = _filterOn;
 
         ShieldGlyph.Text = protectedNow ? "\u2713" : "\u2715";
-        ShieldGlyph.TextColor = Color.FromArgb(protectedNow ? "#34D399" : "#F0736A");
-        ShieldRing.Stroke = Color.FromArgb(protectedNow ? "#255C3A" : "#5C2525");
+        ShieldGlyph.TextColor = Color.FromArgb(protectedNow ? "#34D399" : "#F87171");
+        ShieldRing.Stroke = Color.FromArgb(protectedNow ? "#2A6B4C" : "#6B2E32");
         ShieldState.Text = protectedNow ? "Protected" : "Not protected";
-        ShieldState.TextColor = Color.FromArgb(protectedNow ? "#FFFFFF" : "#F0736A");
+        ShieldState.TextColor = Color.FromArgb(protectedNow ? "#EDF2FC" : "#F87171");
 
         var layersOn = (protectedNow ? 1 : 0) + (listOn ? 1 : 0) + 1;
         _ = layersOn;
 
         // ---- Layer 1: the filter ----
         BtnFilter.Text = _filterOn ? "ON" : "OFF";
-        BtnFilter.BackgroundColor = Color.FromArgb(_filterOn ? "#34D399" : "#3A3A4E");
-        BtnFilter.TextColor = Color.FromArgb(_filterOn ? "#08210F" : "#C9C9DE");
+        BtnFilter.BackgroundColor = Color.FromArgb(_filterOn ? "#34D399" : "#334155");
+        BtnFilter.TextColor = Color.FromArgb(_filterOn ? "#062115" : "#C7D2E4");
         LayerFilterInfo.Text = _filterOn
             ? "Every request checked before it loads"
             : "Off - adverts and pop-ups will show";
@@ -154,8 +154,8 @@ public partial class MainPage : ContentPage
         if (listOn)
         {
             BtnList.Text = "Update";
-            BtnList.BackgroundColor = Color.FromArgb("#162036");
-            BtnList.TextColor = Color.FromArgb("#E6F1FF");
+            BtnList.BackgroundColor = Color.FromArgb("#1A2540");
+            BtnList.TextColor = Color.FromArgb("#DCE7FA");
 
             var when = Hagezi.SavedAt;
             LayerListInfo.Text = when is null
@@ -165,15 +165,15 @@ public partial class MainPage : ContentPage
         else
         {
             BtnList.Text = "Get";
-            BtnList.BackgroundColor = Color.FromArgb("#8B5CF6");
+            BtnList.BackgroundColor = Color.FromArgb("#7C5CF0");
             BtnList.TextColor = Colors.White;
             LayerListInfo.Text = "Not downloaded yet \u00b7 tap Get to fetch it";
         }
 
         // ---- Layer 3: Private DNS ----
         BtnDns.Text = "Open";
-        BtnDns.BackgroundColor = Color.FromArgb("#162036");
-        BtnDns.TextColor = Color.FromArgb("#E6F1FF");
+        BtnDns.BackgroundColor = Color.FromArgb("#1A2540");
+        BtnDns.TextColor = Color.FromArgb("#DCE7FA");
         LayerDnsInfo.Text = _dnsApplied
             ? $"On \u00b7 {DnsPresets.Current.Host}"
             : "Off \u00b7 press Open to turn it on";
@@ -188,8 +188,8 @@ public partial class MainPage : ContentPage
     private void DrawActivityHeader()
     {
         BtnRowsFilter.Text = _blockedOnly ? "Blocked" : "All";
-        BtnRowsFilter.BackgroundColor = Color.FromArgb(_blockedOnly ? "#3A2E5C" : "#162036");
-        BtnRowsFilter.TextColor = Color.FromArgb(_blockedOnly ? "#C7B8FF" : "#E6F1FF");
+        BtnRowsFilter.BackgroundColor = Color.FromArgb(_blockedOnly ? "#2B2350" : "#141D30");
+        BtnRowsFilter.TextColor = Color.FromArgb(_blockedOnly ? "#C7B8FF" : "#DCE7FA");
 
         AdStats.Apply(_blockedOnly, _visibleRows);
         ActivityEmpty.IsVisible = _visibleRows.Count == 0;
@@ -425,17 +425,22 @@ public partial class MainPage : ContentPage
         foreach (var item in items)
         {
             var picked = item;
+            // One card per title: the name on top, what is left under it,
+            // inside a panel that lights up under the remote's ring.
             var button = new Button
             {
                 Text = $"{picked.Label}\n{picked.Progress}",
                 FontFamily = "Segoe UI",
                 FontSize = 13,
-                CornerRadius = 4,
-                Padding = new Thickness(14, 6),
-                WidthRequest = 158,
-                HeightRequest = 74,
-                BackgroundColor = Color.FromArgb("#0F1628"),
-                TextColor = Color.FromArgb("#EDEDF7")
+                FontAttributes = FontAttributes.None,
+                CornerRadius = 12,
+                Padding = new Thickness(14, 10),
+                WidthRequest = 172,
+                HeightRequest = 78,
+                BackgroundColor = Color.FromArgb("#131D31"),
+                BorderColor = Color.FromArgb("#243250"),
+                BorderWidth = 1,
+                TextColor = Color.FromArgb("#E6EEFB")
             };
             button.Clicked += (_, _) => ResumeTitle(picked);
             _continueButtons.Add(button);
@@ -469,12 +474,13 @@ public partial class MainPage : ContentPage
             {
                 FontFamily = "Segoe UI",
                 FontSize = 17,
-                CornerRadius = 4,
-                BorderWidth = 0,
+                CornerRadius = 12,
+                BorderWidth = 1,
+                BorderColor = Color.FromArgb("#243250"),
                 Padding = new Thickness(22, 12),
                 HorizontalOptions = LayoutOptions.Start,
-                BackgroundColor = Color.FromArgb("#0F1628"),
-                TextColor = Color.FromArgb("#EDEDF7")
+                BackgroundColor = Color.FromArgb("#131D31"),
+                TextColor = Color.FromArgb("#E6EEFB")
             };
             button.Clicked += (_, _) => PickPreset(index);
             _presetButtons.Add(button);
@@ -758,5 +764,14 @@ public partial class MainPage : ContentPage
         }
 #endif
         _ = Browser.EvaluateJavaScriptAsync(js);
+    }
+
+    // Navigates the site to the dashboard page. Called by the panel's Back button.
+    public void LoadDashboard()
+    {
+        const string dashboardUrl = "https://secondframe.netlify.app/UN0/dashboard";
+        Browser.Source = dashboardUrl;
+        _history.Clear();
+        _currentUrl = dashboardUrl;
     }
 }

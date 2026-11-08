@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:surface_type="surface_view"
+        app:show_subtitle_button="false"
+        app:resize_mode="fit" />
+
+    <!-- The sub-sync capsule: 40dp tall with 5dp padding all round, so the 30dp buttons sit
+         concentric. Icons are vectors, exactly centred (text glyphs sat off-centre). -->
+    <LinearLayout
+        android:id="@+id/subSyncBox"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_gravity="top|start"
+        android:layout_margin="16dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/sync_box_bg"
+        android:padding="5dp"
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/subSyncSubs"
+            android:layout_width="38dp"
+            android:layout_height="30dp"
+            android:background="@drawable/sync_pill_bg"
+            android:scaleType="center"
+            android:src="@drawable/ic_cc"
+            android:tint="@color/bar_icon_tint"
+            android:contentDescription="@string/track_subtitles"
+            android:nextFocusRight="@id/subSyncMinus" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="4dp"
+            android:background="@color/bar_separator" />
+
+        <ImageButton
+            android:id="@+id/subSyncMinus"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="2dp"
+            android:background="@drawable/bar_icon_bg"
+            android:scaleType="center"
+            android:src="@drawable/ic_minus"
+            android:tint="@color/bar_icon_tint"
+            android:contentDescription="@string/sub_sync_earlier"
+            android:nextFocusLeft="@id/subSyncSubs"
+            android:nextFocusRight="@id/subSyncPlus" />
+
+        <TextView
+            android:id="@+id/subSyncValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:fontFeatureSettings="tnum"
+            android:textColor="@color/bar_icon"
+            android:textSize="13sp" />
+
+        <ImageButton
+            android:id="@+id/subSyncPlus"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="2dp"
+            android:background="@drawable/bar_icon_bg"
+            android:scaleType="center"
+            android:src="@drawable/ic_plus"
+            android:tint="@color/bar_icon_tint"
+            android:contentDescription="@string/sub_sync_later"
+            android:nextFocusLeft="@id/subSyncMinus" />
+    </LinearLayout>
+</FrameLayout>

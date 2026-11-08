@@ -5,10 +5,14 @@ namespace Un0Tv;
 // A TV has no touch screen, so pressing a search box with the remote never
 // brings up Android's keyboard. This script remembers which box the viewer is
 // on and accepts letters from the app, typed into that box the same way a
-// person typing would fill it - including telling the site that the text
-// changed, which is what makes its search react.
+// person typing would fill it.
 // The site's search box is a plain box holding the real input, so pressing it
 // inside the site also means finding that input first.
+//
+// KEY CHANGE: keystrokes from the app's keyboard only update the box's value
+// silently (no 'input'/'change' events). The site only reacts when the user
+// presses the Search key, which fires submit() and that DOES dispatch the
+// events the site watches for.
 public static class FieldInput
 {
     public static readonly string Js = """
@@ -125,6 +129,10 @@ public static class FieldInput
     try {
       Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, text);
     } catch (e) { el.value = text; }
+  }
+
+  // Fire the events the site listens for ('input' and 'change').
+  function fireInputEvents(el) {
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
@@ -141,7 +149,7 @@ public static class FieldInput
     if (el.isContentEditable) {
       try { document.execCommand('insertText', false, text); }
       catch (e) { el.textContent = (el.textContent || '') + text; }
-      el.dispatchEvent(new Event('input', { bubbles: true }));
+      // Do NOT fire input here - only on Search
       return true;
     }
     var v = el.value || '';
@@ -149,6 +157,7 @@ public static class FieldInput
     var end = el.selectionEnd == null ? v.length : el.selectionEnd;
     setValue(el, v.slice(0, start) + text + v.slice(end));
     try { el.selectionStart = el.selectionEnd = start + text.length; } catch (e) { }
+    // Do NOT fire input here - only on Search
     return true;
   }
 
@@ -157,6 +166,7 @@ public static class FieldInput
     if (!el) return false;
     if (el.isContentEditable) {
       try { document.execCommand('delete'); } catch (e) { }
+      // Do NOT fire input here - only on Search
       return true;
     }
     var v = el.value || '';
@@ -165,6 +175,7 @@ public static class FieldInput
     if (start === end && start > 0) start -= 1;
     setValue(el, v.slice(0, start) + v.slice(end));
     try { el.selectionStart = el.selectionEnd = start; } catch (e) { }
+    // Do NOT fire input here - only on Search
     return true;
   }
 
@@ -173,6 +184,7 @@ public static class FieldInput
     if (!el) return false;
     if (el.isContentEditable) el.textContent = '';
     else setValue(el, '');
+    // Do NOT fire input here - only on Search
     return true;
   }
 
@@ -186,6 +198,8 @@ public static class FieldInput
       el.dispatchEvent(new KeyboardEvent('keyup', o));
     } catch (e) { }
     try { if (el.form && el.form.requestSubmit) el.form.requestSubmit(); } catch (e) { }
+    // NOW fire the input/change events the site watches for
+    fireInputEvents(el);
     return true;
   }
 
