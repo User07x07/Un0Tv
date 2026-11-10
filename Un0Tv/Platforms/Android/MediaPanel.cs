@@ -6,7 +6,8 @@ using AndroidColor = Android.Graphics.Color;
 namespace Un0Tv;
 
 // The small command panel the remote's Left key opens over a movie: Home,
-// Play and Pause. A Next button joins them for a TV episode at 90% watched.
+// Beginning, Play, Pause, Backward, Forward. A Next button joins them for a
+// TV episode at 90% watched.
 //
 // The buttons are real Android views, so the D-pad always reaches them - the
 // site's own player controls sit inside a player frame the app cannot focus,
@@ -19,6 +20,9 @@ internal static class MediaPanel
     private static FrameLayout? _root;
     private static Android.Widget.Button? _first;
     private static Android.Widget.Button? _next;
+    private static Android.Widget.Button? _beginning;
+    private static Android.Widget.Button? _forward;
+    private static Android.Widget.Button? _backward;
     private static int _generation;
 
     public static bool IsOpen => _root is not null && _root.Visibility == ViewStates.Visible;
@@ -113,17 +117,29 @@ internal static class MediaPanel
         bg.SetStroke(Dp(2), AndroidColor.ParseColor("#2BE0FF"));
         bar.Background = bg;
 
-        var home = Key(activity, "Home", 150);
-        var play = Key(activity, "Play", 150);
-        var pause = Key(activity, "Pause", 150);
-        var next = Key(activity, "Next", 150);
+        var home = Key(activity, "Home");
+        var beginning = Key(activity, "Beginning");
+        var play = Key(activity, "Play");
+        var pause = Key(activity, "Pause");
+        var backward = Key(activity, "<< Back 10s");
+        var forward = Key(activity, "Forward 10s >>");
+        var next = Key(activity, "Next");
         next.Visibility = ViewStates.Gone;
         _next = next;
+        _beginning = beginning;
+        _forward = forward;
+        _backward = backward;
 
         home.Click += (_, _) =>
         {
             Hide();
             MainActivity.Current?.PanelBack();
+        };
+
+        beginning.Click += (_, _) =>
+        {
+            TvWebView.PlayerCommand("beginning");
+            Arm();
         };
 
         play.Click += (_, _) =>
@@ -138,6 +154,18 @@ internal static class MediaPanel
             Arm();
         };
 
+        backward.Click += (_, _) =>
+        {
+            TvWebView.PlayerCommand("backward");
+            Arm();
+        };
+
+        forward.Click += (_, _) =>
+        {
+            TvWebView.PlayerCommand("forward");
+            Arm();
+        };
+
         next.Click += (_, _) =>
         {
             SetNextAvailable(false);
@@ -146,8 +174,11 @@ internal static class MediaPanel
         };
 
         bar.AddView(home);
+        bar.AddView(beginning);
         bar.AddView(play);
         bar.AddView(pause);
+        bar.AddView(backward);
+        bar.AddView(forward);
         bar.AddView(next);
         _first = home;
 
@@ -162,14 +193,17 @@ internal static class MediaPanel
         _root = root;
     }
 
-    private static Android.Widget.Button Key(Activity activity, string label, int widthDp)
+    private static Android.Widget.Button Key(Activity activity, string label)
     {
         var b = new Android.Widget.Button(activity);
         b.Text = label;
         b.SetTextSize(Android.Util.ComplexUnitType.Sp, 16);
         b.Focusable = true;
         b.FocusableInTouchMode = true;
-        b.SetPadding(Dp(10), 0, Dp(10), 0);
+        // Each button is only as wide as its words (with a small minimum), so the
+        // bar stays narrow enough to show on screen, even with Next showing.
+        b.SetMinWidth(Dp(84));
+        b.SetPadding(Dp(14), 0, Dp(14), 0);
         Style(b, false);
         b.FocusChange += (_, e) =>
         {
@@ -178,7 +212,7 @@ internal static class MediaPanel
                 Arm();
         };
 
-        var lp = new LinearLayout.LayoutParams(Dp(widthDp), Dp(46));
+        var lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, Dp(46));
         lp.SetMargins(Dp(5), 0, Dp(5), 0);
         b.LayoutParameters = lp;
         return b;

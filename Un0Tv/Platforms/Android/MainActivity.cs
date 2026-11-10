@@ -213,6 +213,16 @@ public class MainActivity : MauiAppCompatActivity
         {
             var handled = true;
 
+            // Number keys 0-9 (the remote's digit buttons and the numpad): the
+            // ring jumps straight to that numbered selectable item.
+            var code = (int)e.KeyCode;
+            if ((code >= 7 && code <= 16) || (code >= 144 && code <= 153))
+            {
+                var digit = (code >= 7 && code <= 16) ? code - 7 : (code - 144) % 10;
+                Page?.JumpFocus(digit);
+                return true;
+            }
+
             switch (e.KeyCode)
             {
                 case AndroidKeycode.DpadUp:

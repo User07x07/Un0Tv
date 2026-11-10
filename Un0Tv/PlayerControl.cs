@@ -234,13 +234,18 @@ public static class PlayerControl
     return true;
   }
 
+  function beginning() {
+    seek(0);  }
+
   window.__un0tvPlayer = {
     play: play,
     pause: pause,
     next: nextEpisode,
     toggle: function () { if (playing) pause(); else play(); },
     forward: function () { seek(time + 10); },
-    back: function () { seek(time - 10); }
+    back: function () { seek(time - 10); },
+    backward: function () { seek(time - 10); },
+    beginning: beginning,
   };
 
   // Keep the current time fresh, so forward and back start from the right place.

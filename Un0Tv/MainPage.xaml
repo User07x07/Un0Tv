@@ -225,27 +225,64 @@
               Padding="48,30">
 
 			<!-- Header -->
-			<Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
-				<HorizontalStackLayout Grid.Column="0" Spacing="10" VerticalOptions="Center">
-					<Label Text="UN0TV"
+			<Grid Grid.Row="0" RowDefinitions="Auto,Auto" RowSpacing="10">
+				<Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+					<HorizontalStackLayout Grid.Column="0" Spacing="10" VerticalOptions="Center">
+						<Label Text="UN0TV"
                            FontSize="18"
                            FontAttributes="Bold"
                            CharacterSpacing="3"
                            TextColor="{StaticResource Ink}" />
-					<Label Text="PROTECTION"
+						<Label Text="PROTECTION"
                            FontSize="11"
                            FontAttributes="Bold"
                            CharacterSpacing="2.4"
                            TextColor="{StaticResource Accent}"
                            VerticalOptions="Center" />
-				</HorizontalStackLayout>
+					</HorizontalStackLayout>
 
-				<Label x:Name="HomeHint"
+					<Label x:Name="HomeHint"
                        Grid.Column="2"
                        Text="Arrows move, OK presses."
                        FontSize="13"
                        TextColor="{StaticResource InkFaint}"
                        VerticalOptions="Center" />
+				</Grid>
+
+				<!-- The Un0 logo, centred above everything else, with the quote
+				     that says what Un0 is. The logo sits in a card the same
+				     colour as the night-sky panels, with a soft cyan glow, and
+				     the glow breathes so the screen feels alive. -->
+				<VerticalStackLayout Grid.Row="1"
+                                     Spacing="10"
+                                     HorizontalOptions="Center">
+					<Border x:Name="LogoFrame"
+                        Background="{StaticResource CardBrush}"
+                        Stroke="{StaticResource StrokeSoft}"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 18"
+                        Padding="12,10"
+                        HorizontalOptions="Center">
+						<Border.Shadow>
+							<Shadow Brush="{StaticResource Accent}"
+                                    Radius="26"
+                                    Opacity="0.85"
+                                    Offset="0,0" />
+						</Border.Shadow>
+						<Image x:Name="LogoMark"
+                           Source="un0official.png"
+                           WidthRequest="104"
+                           HeightRequest="64" />
+					</Border>
+
+					<Label x:Name="LogoQuote"
+                       Text="&quot;A Un0 Official isn't just where you store things — it's where you keep what matters.&quot;"
+                       FontSize="17"
+                       FontAttributes="Italic"
+                       TextColor="{StaticResource InkDim}"
+                       HorizontalTextAlignment="Center"
+                       MaximumWidthRequest="760" />
+				</VerticalStackLayout>
 			</Grid>
 
 			<!-- Body -->
@@ -431,15 +468,6 @@
                                  ProgressColor="{StaticResource Accent}"
                                  HeightRequest="4"
                                  Margin="0,2" />
-
-					<!-- Continue watching: titles the viewer left part way through.
-					     Always on screen, with a short hint until the first one. -->
-					<VerticalStackLayout x:Name="ContinueSection" Spacing="8" Margin="0,2,0,0">
-						<Label Text="CONTINUE WATCHING" Style="{StaticResource Section}" />
-						<ScrollView Orientation="Horizontal">
-							<HorizontalStackLayout x:Name="ContinueList" Spacing="12" />
-						</ScrollView>
-					</VerticalStackLayout>
 
 					<!-- The thing a viewer actually came to do. -->
 					<Button x:Name="BtnStart"

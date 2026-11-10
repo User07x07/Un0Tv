@@ -74,6 +74,8 @@ internal static class VideoControl
       else if (cmd === 'toggle') { if (v.paused) v.play(); else v.pause(); }
       else if (cmd === 'forward') v.currentTime = Math.max(0, (v.currentTime || 0) + 10);
       else if (cmd === 'rewind') v.currentTime = Math.max(0, (v.currentTime || 0) - 10);
+      else if (cmd === 'backward') v.currentTime = Math.max(0, (v.currentTime || 0) - 10);
+      else if (cmd === 'beginning') v.currentTime = 0;
       else if (cmd === 'seek' && typeof at === 'number') v.currentTime = Math.max(0, at);
       else if (cmd === 'mute') v.muted = !v.muted;
     } catch (e) { }

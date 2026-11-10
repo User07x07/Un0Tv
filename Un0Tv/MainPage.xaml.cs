@@ -66,7 +66,9 @@ public partial class MainPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        ShowHome();
+        // The protection dashboard is dormant: the app goes straight to the
+        // site on launch instead of stopping on the Un0 Protection screen.
+        StartSite();
     }
 
     protected override void OnDisappearing()
@@ -109,7 +111,7 @@ public partial class MainPage : ContentPage
         HomePanel.IsVisible = true;
         ListProgress.IsVisible = false;
         DrawLayers();
-        DrawContinue();
+        PulseLogo();
 
         StartBeat();
 
@@ -210,12 +212,53 @@ public partial class MainPage : ContentPage
                 return;
 
             AdStats.Drain();
+            PulseLogo();
 
             if (ActivityPanel.IsVisible)
                 DrawActivityHeader();
         };
 
         _beat.Start();
+    }
+
+    // The logo's glow breathes while the home screen is up, so the page feels
+    // alive instead of frozen. The pulse is the app's own accent colour over
+    // the same night-sky card, so logo and background stay one look.
+    private bool _logoPulsing;
+
+    private void PulseLogo()
+    {
+        if (!HomePanel.IsVisible)
+        {
+            if (_logoPulsing)
+            {
+                this.AbortAnimation("LogoPulse");
+                _logoPulsing = false;
+            }
+            return;
+        }
+
+        if (_logoPulsing)
+            return;
+
+        _logoPulsing = true;
+        var pulse = new Animation(v =>
+        {
+            if (LogoFrame?.Shadow is not null)
+                LogoFrame.Shadow.Opacity = (float)v;
+            if (LogoMark is not null)
+                LogoMark.Scale = 1 + (v - 0.5) * 0.08;
+        }, 0.5, 0.95, Easing.SinInOut);
+
+        pulse.Commit(this, "LogoPulse", length: 1800, repeat: () =>
+        {
+            if (!HomePanel.IsVisible)
+            {
+                _logoPulsing = false;
+                return false;
+            }
+            return true;
+        });
     }
 
     private void StopBeat()
@@ -396,71 +439,6 @@ public partial class MainPage : ContentPage
 
     private readonly List<Button> _presetButtons = new();
 
-    // The Continue watching cards, rebuilt each time the home screen opens.
-    private readonly List<Button> _continueButtons = new();
-
-    // Draws the Continue watching row from the saved progress. The row always
-    // shows, so the viewer can see where their titles will appear.
-    private void DrawContinue()
-    {
-        var items = WatchProgress.Recent(3);
-
-        ContinueList.Children.Clear();
-        _continueButtons.Clear();
-
-        if (items.Count == 0)
-        {
-            ContinueList.Children.Add(new Label
-            {
-                Text = "Nothing yet - start a movie and it shows up here.",
-                FontFamily = "Segoe UI",
-                FontSize = 13,
-                TextColor = Color.FromArgb("#6C6C84"),
-                VerticalOptions = LayoutOptions.Center,
-                Margin = new Thickness(2, 8, 0, 0)
-            });
-            return;
-        }
-
-        foreach (var item in items)
-        {
-            var picked = item;
-            // One card per title: the name on top, what is left under it,
-            // inside a panel that lights up under the remote's ring.
-            var button = new Button
-            {
-                Text = $"{picked.Label}\n{picked.Progress}",
-                FontFamily = "Segoe UI",
-                FontSize = 13,
-                FontAttributes = FontAttributes.None,
-                CornerRadius = 12,
-                Padding = new Thickness(14, 10),
-                WidthRequest = 172,
-                HeightRequest = 78,
-                BackgroundColor = Color.FromArgb("#131D31"),
-                BorderColor = Color.FromArgb("#243250"),
-                BorderWidth = 1,
-                TextColor = Color.FromArgb("#E6EEFB")
-            };
-            button.Clicked += (_, _) => ResumeTitle(picked);
-            _continueButtons.Add(button);
-            ContinueList.Children.Add(button);
-        }
-    }
-
-    // Opens the page the title was watched on. The player then resumes from the
-    // saved spot once it reports its time.
-    private void ResumeTitle(WatchItem item)
-    {
-        _siteStarted = true;
-        AdStats.IsWatched = false;
-        HomePanel.IsVisible = false;
-        ActivityPanel.IsVisible = false;
-        StopBeat();
-        AttachNative();
-        Browser.Source = string.IsNullOrEmpty(item.Url) ? SiteUrl : item.Url;
-    }
-
     // Builds one button per preset, once, above the two fixed buttons.
     private void BuildPresets()
     {
@@ -613,8 +591,6 @@ public partial class MainPage : ContentPage
             order.Add(BtnFilter);
             order.Add(BtnList);
             order.Add(BtnDns);
-            foreach (var b in _continueButtons)
-                order.Add(b);
             order.Add(BtnStart);
         }
         else if (DnsPanel.IsVisible)
@@ -714,6 +690,11 @@ public partial class MainPage : ContentPage
 
     public void ActivateFocus()
         => RunScript("window.__un0tvNav&&window.__un0tvNav.activate();");
+
+    // Called from MainActivity for the remote's number keys: the ring jumps
+    // straight to that numbered selectable item (1..9, then 0 for ten).
+    public void JumpFocus(int digit)
+        => RunScript($"window.__un0tvNav&&window.__un0tvNav.jump({digit});");
 
     // Runs a script in the page for the Android side (the on-screen keyboard
     // types into the site's own search box this way).

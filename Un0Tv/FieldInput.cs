@@ -69,12 +69,33 @@ public static class FieldInput
     return null;
   }
 
+  // The site's header search box: on a wide (TV) screen the site draws the box
+  // itself in the top bar, with the placeholder "SEARCH MOVIES & TV...". That
+  // placeholder is the surest sign of the box the viewer means.
+  function headerSearchInput() {
+    try {
+      var any = document.querySelectorAll('input[placeholder]');
+      for (var i = 0; i < any.length; i++) {
+        var ph = (any[i].getAttribute('placeholder') || '').toLowerCase();
+        if (ph.indexOf('search') >= 0 || ph.indexOf('find') >= 0) {
+          var r = any[i].getBoundingClientRect();
+          if (r.width > 40 && r.height > 10) return any[i];
+        }
+      }
+    } catch (e) { }
+    return null;
+  }
+
   // Called when the viewer presses OK on the site's search box. Returns true
   // when a real box was found and focused, so the app can show its keys.
   function focusBest() {
     var box = null;
     try { box = window.__un0tvNav && window.__un0tvNav.current ? window.__un0tvNav.current() : null; } catch (e) { }
     var el = fieldWithin(box) || fieldWithin(active) || (editable(document.activeElement) ? document.activeElement : null);
+    if (!el) {
+      // The header box: the "SEARCH MOVIES & TV..." input in the site's top bar.
+      el = headerSearchInput();
+    }
     if (!el) {
       // Last try: the first search box on the page, which is the one in the
       // site's header.
@@ -198,8 +219,21 @@ public static class FieldInput
       el.dispatchEvent(new KeyboardEvent('keyup', o));
     } catch (e) { }
     try { if (el.form && el.form.requestSubmit) el.form.requestSubmit(); } catch (e) { }
-    // NOW fire the input/change events the site watches for
+    // The site's header box navigates on Enter through its own keydown handler;
+    // fire the events it watches for, and if the page has not moved to the
+    // search results shortly after, go there with the typed query ourselves.
     fireInputEvents(el);
+    try {
+      var q = (el.value || '').trim();
+      if (q.length >= 2) {
+        setTimeout(function () {
+          try {
+            if (location.pathname.indexOf('/UN0/search') !== 0)
+              location.href = '/UN0/search?q=' + encodeURIComponent(q);
+          } catch (e) { }
+        }, 600);
+      }
+    } catch (e) { }
     return true;
   }
 
