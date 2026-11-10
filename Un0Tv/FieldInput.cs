@@ -90,14 +90,6 @@ public static class FieldInput
   }
 
   function report() {
-    // The ring landing on a box only remembers it. The keys come up when the
-    // viewer presses OK - on the box itself, or on a box that passes the press
-    // on to its own search field.
-    try {
-      if (window.Un0TvNative && window.Un0TvNative.fieldFocused)
-        window.Un0TvNative.fieldFocused();
-    } catch (e) { }
-
     var acted = 0;
     try { acted = window.__un0tvActedAt || 0; } catch (e) { }
     if (!acted || Date.now() - acted > 2500) return;
@@ -115,7 +107,7 @@ public static class FieldInput
   document.addEventListener('focusout', function (e) {
     if (e.target !== active) return;
     setTimeout(function () {
-      if (document.activeElement !== active) active = null;
+      if (active && !active.isConnected) active = null;
     }, 300);
   }, true);
 
@@ -137,9 +129,16 @@ public static class FieldInput
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  // One small cache is shared by letters, backspace and clear. Repeating the
+  // page's focus search for every key was unnecessary work on a TV browser.
   function target() {
-    if (editable(active)) return active;
-    if (editable(document.activeElement)) { active = document.activeElement; return active; }
+    if (active && active.isConnected && editable(active)) {
+      if (document.activeElement !== active) {
+        try { active.focus({ preventScroll: true }); } catch (e) { }
+      }
+      return active;
+    }
+    if (focusBest()) return active;
     return null;
   }
 
@@ -184,6 +183,7 @@ public static class FieldInput
     if (!el) return false;
     if (el.isContentEditable) el.textContent = '';
     else setValue(el, '');
+    try { el.selectionStart = el.selectionEnd = 0; } catch (e) { }
     // Do NOT fire input here - only on Search
     return true;
   }

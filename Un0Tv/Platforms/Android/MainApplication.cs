@@ -8,6 +8,7 @@ namespace Un0Tv
     {
         public MainApplication(IntPtr handle, JniHandleOwnership ownership)
             : base(handle, ownership)
+
         {
         }
 

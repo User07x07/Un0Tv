@@ -171,6 +171,8 @@ public static class PlayerControl
     if (info.event === 'pause' || info.event === 'ended') playing = false;
 
     if (info.tmdbId) {
+      var key = keyFor(info);
+      reportNext(info, key);
       resumeIfSaved(info);
       if (!holdSaves) saveProgress(info);
     }
@@ -185,9 +187,57 @@ public static class PlayerControl
     send({ command: 'seek', time: Math.floor(to) });
   }
 
+  // Episode-only Next state. Movies never call the bridge with "1".
+  var nextKey = null;
+  var nextAt = 0;
+  function reportNext(info, key) {
+    var isTv = info.mediaType === 'tv';
+    var ready = isTv && info.duration > 0 && info.currentTime / info.duration >= 0.90;
+    if (!isTv) { ready = false; key = null; }
+    var now = Date.now();
+    if (key === nextKey && ready === (nextAt > 0) && now - nextAt < 10000) return;
+    if (!ready && !nextKey) return;
+    nextKey = ready ? key : null;
+    nextAt = ready ? now : 0;
+    try {
+      if (window.Un0TvNative && window.Un0TvNative.nextEpisode)
+        window.Un0TvNative.nextEpisode(ready ? '1' : '0');
+    } catch (e) { }
+  }
+
+  function nextEpisode() {
+    // Use the site's own episode selector: it knows season boundaries and
+    // specials, unlike adding one to an episode number in the address.
+    var own = document.querySelector('.wt-an-skip');
+    if (own) { own.click(); return true; }
+    var params = new URLSearchParams(location.search);
+    if (params.get('type') !== 'tv') return false;
+    var id = parseInt(params.get('id') || '', 10);
+    var season = parseInt(params.get('season') || '1', 10);
+    var episode = parseInt(params.get('episode') || '1', 10);
+    var title = params.get('title') || '';
+    if (!id || !season || !episode) return false;
+    function go(s, e) {
+      params.set('type', 'tv');
+      params.set('season', String(s));
+      params.set('episode', String(e));
+      location.href = location.pathname + '?' + params.toString();
+    }
+    // The site's episode list is the source of truth when it is available.
+    var current = document.querySelector('.wt-fs-episode-item.active');
+    var following = current && current.nextElementSibling;
+    if (following) { following.click(); return true; }
+    // Keep the site's own query values (title, kids mode and so on). The
+    // normal path above is preferred because it also handles season changes.
+    params.set('episode', String(episode + 1));
+    location.href = location.pathname + '?' + params.toString();
+    return true;
+  }
+
   window.__un0tvPlayer = {
     play: play,
     pause: pause,
+    next: nextEpisode,
     toggle: function () { if (playing) pause(); else play(); },
     forward: function () { seek(time + 10); },
     back: function () { seek(time - 10); }

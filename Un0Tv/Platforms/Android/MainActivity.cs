@@ -293,8 +293,8 @@ public class MainActivity : MauiAppCompatActivity
     public static bool SoftKeysUp()
         => Current?._decor is not null && KeyboardIsUp(Current._decor);
 
-    // The command panel's Back button: leave the fullscreen picture first, then
-    // a sign-in window, then go to the dashboard URL.
+    // The command panel's Home button: leave a covering layer first, then go
+    // to the site's dashboard rather than stepping back into the movie.
     internal void PanelBack()
     {
         if (TvWebView.IsFullscreen)

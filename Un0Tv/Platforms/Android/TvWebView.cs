@@ -310,8 +310,23 @@ internal static class TvWebView
                 + "if(window.__un0tvField){window.__un0tvField.insert('"
                 + text.Replace("\\", "\\\\").Replace("'", "\\'") + "');}");
 
+    // Every typing action keeps the same focused search box. Restoring focus
+    // before deletion is essential after the native pad takes Android focus.
     public static void EraseText()
         => Eval("if(window.__un0tvField){window.__un0tvField.backspace();}");
+
+    public static void ClearText()
+        => Eval("if(window.__un0tvField){window.__un0tvField.clear();}");
+
+    // Called by PlayerControl for a TV episode at 90% watched, and reset on
+    // every navigation so a movie can never inherit an old Next button.
+    internal static void SetNextAvailable(bool available)
+        => Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(
+            () => MediaPanel.SetNextAvailable(available));
+
+    internal static void NextEpisode()
+        => Eval("if(window.__un0tvPlayer&&window.__un0tvPlayer.next)"
+                + "window.__un0tvPlayer.next();");
 
     public static void SubmitField()
         => Eval("if(window.__un0tvField){window.__un0tvField.submit();}");

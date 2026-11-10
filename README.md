@@ -5,7 +5,7 @@
 Un0Tv wraps one web app in a full-screen, D-pad driven Android TV experience. The site itself was built for phones: it expects swipes, has no TV navigation, and serves its films through third-party players covered in adverts. Un0Tv bridges that gap on the TV side, inside one app and without a VPN.
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-1.5.0-blueviolet?style=flat-square" />
+  <img alt="version" src="https://img.shields.io/badge/version-1.6.0-blueviolet?style=flat-square" />
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%20TV%20%7C%20Google%20TV-3DDC84?style=flat-square" />
   <img alt="dotnet" src="https://img.shields.io/badge/_.NET-MAUI%20%C2%B7%20net10.0--android-512BD4?style=flat-square" />
   <img alt="min sdk" src="https://img.shields.io/badge/min%20Android-5.0%20(API%2021)-0A84FF?style=flat-square" />
@@ -76,10 +76,12 @@ flowchart TD
     P --> V("VideoControl<br/>drives the movie in every frame")
     V --> Q("WatchProgress<br/>kept on the TV")
     Q --> H
-    V --> N2("MediaPanel<br/>Back · Play · Pause")
-    N2 --> I
+    V --> M("MediaPanel<br/>Back · Play · Pause")
+    M --> I
     G --> I("Clean playback")
     N --> I
+    B --> K("FieldInput<br/>letter pad for search")
+    K --> I
 ```
 
 The app is deliberately thin. It is **one page, one browser, and a handful of Android-side helpers**. There is no native re-render of the site, no scraping and no mirroring, so whatever the site shows is what you see.
@@ -290,16 +292,16 @@ The home screen and the presets screen use Android's own focus movement, so the 
 
 ## Versioning
 
-Current version: **1.5.0** (Android version code **6**).
+Current version: **1.6.0** (Android version code **7**).
 
-`version.json` holds the base version (`1.5`), and `Nerdbank.GitVersioning` expands it from git history. Android needs two numbers, and both must climb on every install or the TV treats the new file as the same old app and refuses to update it:
+`version.json` holds the base version (`1.6`), and `Nerdbank.GitVersioning` expands it from git history. Android needs two numbers, and both must climb on every install or the TV treats the new file as the same old app and refuses to update it:
 
 | Android setting | What it means | Written here |
 |---|---|---|
-| `ApplicationDisplayVersion` | The version you see, for example `1.5.0` | `1.5.0` |
-| `ApplicationVersion` | A whole number that must increase on every install | `6` |
+| `ApplicationDisplayVersion` | The version you see, for example `1.6.0` | `1.6.0` |
+| `ApplicationVersion` | A whole number that must increase on every install | `7` |
 
-> **Which number wins.** The two values above are the **fallback**. `Nerdbank.GitVersioning` stamps the real ones from `version.json` and the commit count, which is why a Debug build reports something like `1.4.3-g<commit>`. Raise the base in `version.json` for a release a viewer can see, and raise `ApplicationVersion` by hand as well so the two stay in step — a repeat number is the usual reason a TV refuses an update.
+> **Which number wins.** The two values above are the **fallback**. `Nerdbank.GitVersioning` stamps the real ones from `version.json` and the commit count, which is why a Debug build reports something like `1.5.3-g<commit>`. Raise the base in `version.json` for a release a viewer can see, and raise `ApplicationVersion` by hand as well so the two stay in step — a repeat number is the usual reason a TV refuses an update.
 
 ---
 
@@ -314,4 +316,4 @@ Current version: **1.5.0** (Android version code **6**).
 
 ---
 
-<p align="center"><sub>Un0Tv 1.5.0 · built for a remote, not a thumb · tested on Sony Android TV</sub></p>
+<p align="center"><sub>Un0Tv 1.6.0 · built for a remote, not a thumb · tested on Sony Android TV</sub></p>

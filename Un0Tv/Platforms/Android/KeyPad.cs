@@ -98,17 +98,21 @@ internal static class KeyPad
             pad.AddView(row);
         }
 
-        // The bottom row: a space, erase, search, and close.
+        // The bottom row: a space, single-letter backspace, clear, search,
+        // and close.
         var tools = new LinearLayout(activity) { Orientation = Orientation.Horizontal };
         tools.SetGravity(GravityFlags.CenterHorizontal);
 
-        var space = Key(activity, "space", 180);
+        var space = Key(activity, "space", 130);
         space.Click += (_, _) => Type(" ");
 
-        var erase = Key(activity, "erase", 130);
-        erase.Click += (_, _) => Erase();
+        var backspace = Key(activity, "backspace", 120);
+        backspace.Click += (_, _) => Erase();
 
-        var search = Key(activity, "search", 130);
+        var clear = Key(activity, "clear", 80);
+        clear.Click += (_, _) => TvWebView.ClearText();
+
+        var search = Key(activity, "search", 100);
         search.Click += (_, _) =>
         {
             TvWebView.SubmitField();
@@ -116,7 +120,7 @@ internal static class KeyPad
             TvWebView.HideKeyboard();
         };
 
-        var close = Key(activity, "close", 110);
+        var close = Key(activity, "close", 90);
         close.Click += (_, _) =>
         {
             Hide();
@@ -124,7 +128,8 @@ internal static class KeyPad
         };
 
         tools.AddView(space);
-        tools.AddView(erase);
+        tools.AddView(backspace);
+        tools.AddView(clear);
         tools.AddView(search);
         tools.AddView(close);
         pad.AddView(tools);

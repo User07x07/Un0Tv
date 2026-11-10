@@ -5,8 +5,8 @@ using AndroidColor = Android.Graphics.Color;
 
 namespace Un0Tv;
 
-// The small command panel the remote's Left key opens over a movie: Back,
-// Play and Pause.
+// The small command panel the remote's Left key opens over a movie: Home,
+// Play and Pause. A Next button joins them for a TV episode at 90% watched.
 //
 // The buttons are real Android views, so the D-pad always reaches them - the
 // site's own player controls sit inside a player frame the app cannot focus,
@@ -18,6 +18,7 @@ internal static class MediaPanel
 {
     private static FrameLayout? _root;
     private static Android.Widget.Button? _first;
+    private static Android.Widget.Button? _next;
     private static int _generation;
 
     public static bool IsOpen => _root is not null && _root.Visibility == ViewStates.Visible;
@@ -62,6 +63,18 @@ internal static class MediaPanel
         Arm();
     }
 
+    // PlayerControl calls this only for a TV episode that has reached 90%.
+    // The first arrival opens the panel so Next is visible without a secret
+    // key combination; later visits can reopen it with Left.
+    public static void SetNextAvailable(bool available)
+    {
+        var becameAvailable = available && _next?.Visibility != ViewStates.Visible;
+        if (_next is not null)
+            _next.Visibility = available ? ViewStates.Visible : ViewStates.Gone;
+        if (becameAvailable && TvWebView.OnMoviePage)
+            Show();
+    }
+
     public static void Hide()
     {
         if (_root is null)
@@ -100,11 +113,14 @@ internal static class MediaPanel
         bg.SetStroke(Dp(2), AndroidColor.ParseColor("#2BE0FF"));
         bar.Background = bg;
 
-        var back = Key(activity, "Back", 150);
+        var home = Key(activity, "Home", 150);
         var play = Key(activity, "Play", 150);
         var pause = Key(activity, "Pause", 150);
+        var next = Key(activity, "Next", 150);
+        next.Visibility = ViewStates.Gone;
+        _next = next;
 
-        back.Click += (_, _) =>
+        home.Click += (_, _) =>
         {
             Hide();
             MainActivity.Current?.PanelBack();
@@ -122,10 +138,18 @@ internal static class MediaPanel
             Arm();
         };
 
-        bar.AddView(back);
+        next.Click += (_, _) =>
+        {
+            SetNextAvailable(false);
+            Hide();
+            TvWebView.NextEpisode();
+        };
+
+        bar.AddView(home);
         bar.AddView(play);
         bar.AddView(pause);
-        _first = back;
+        bar.AddView(next);
+        _first = home;
 
         var root = new FrameLayout(activity);
         var lp = new FrameLayout.LayoutParams(

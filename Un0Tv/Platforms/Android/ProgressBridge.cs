@@ -45,6 +45,12 @@ internal sealed class ProgressBridge : Java.Lang.Object
         });
     }
 
+    // Only trusted player events can request the episode-only Next button.
+    [JavascriptInterface]
+    [Export("nextEpisode")]
+    public void NextEpisode(string available)
+        => TvWebView.SetNextAvailable(available == "1");
+
     // Called by PageRoute on every navigation (pushState, popstate, hashchange,
     // initial load). The app keeps this to decide whether the Left key should
     // open the movie command panel.
