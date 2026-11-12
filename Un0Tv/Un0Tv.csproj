@@ -41,8 +41,16 @@ For example: <RuntimeIdentifiers>maccatalyst-x64;maccatalyst-arm64</RuntimeIdent
      The real numbers are stamped from git by Nerdbank.GitVersioning
      (see version.json); these two are the fallback used when that
      package is missing, and they are kept in step with it. -->
-		<ApplicationDisplayVersion>1.8.0</ApplicationDisplayVersion>
-		<ApplicationVersion>9</ApplicationVersion>
+		<ApplicationDisplayVersion>2.1.0-beta</ApplicationDisplayVersion>
+		<ApplicationVersion>13</ApplicationVersion>
+
+		<!-- One version for every target framework. NuGet refuses to restore a
+     multi-target project whose PackageVersion differs between the targets
+     (error NU1105), which leaves Android without its packages and hides the
+     app's own classes from the editor. This pins Version and PackageVersion
+     to the same value for all targets so that cannot happen. -->
+		<Version>2.0.0-beta</Version>
+		<PackageVersion>2.0.0-beta</PackageVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>None</WindowsPackageType>
@@ -63,10 +71,10 @@ For example: <RuntimeIdentifiers>maccatalyst-x64;maccatalyst-arm64</RuntimeIdent
 
 	<ItemGroup>
 		<!-- App Icon -->
-		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\Images\un0official.png" Color="#512BD4" />
+		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\Images\un0official.png" Color="#14161C" />
 
 		<!-- Splash Screen -->
-		<MauiSplashScreen Include="Resources\Images\un0official.png" Color="#512BD4" BaseSize="128,128" />
+		<MauiSplashScreen Include="Resources\Images\un0official.png" Color="#14161C" BaseSize="128,128" />
 
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />

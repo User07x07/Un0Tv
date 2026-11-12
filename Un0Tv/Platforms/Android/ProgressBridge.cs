@@ -59,4 +59,5 @@ internal sealed class ProgressBridge : Java.Lang.Object
     public void SetRoute(string path)
         => Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(() =>
             TvWebView.SetRoute(path));
+
 }

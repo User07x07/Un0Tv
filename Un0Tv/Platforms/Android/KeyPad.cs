@@ -74,8 +74,10 @@ internal static class KeyPad
         pad.Focusable = true;
         pad.FocusableInTouchMode = true;
 
+        // White keyboard panel; the root's alpha (set below) makes the
+        // whole pad 30% see-through.
         var bg = new Android.Graphics.Drawables.GradientDrawable();
-        bg.SetColor(AndroidColor.ParseColor("#F00A1626"));
+        bg.SetColor(AndroidColor.White);
         bg.SetCornerRadius(Dp(16));
         bg.SetStroke(Dp(2), AndroidColor.ParseColor("#2BE0FF"));
         pad.Background = bg;
@@ -135,6 +137,7 @@ internal static class KeyPad
         pad.AddView(tools);
 
         var root = new FrameLayout(activity);
+        root.Alpha = 0.30f; // the whole keyboard sits at 30% opacity
         var lp = new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WrapContent,
             ViewGroup.LayoutParams.WrapContent);
@@ -176,10 +179,10 @@ internal static class KeyPad
     private static void Style(TextView b, bool focused)
     {
         var bg = new Android.Graphics.Drawables.GradientDrawable();
-        bg.SetColor(AndroidColor.ParseColor(focused ? "#123C5A" : "#0B1A2B"));
+        bg.SetColor(AndroidColor.ParseColor(focused ? "#CFF6FF" : "#FFFFFF"));
         bg.SetCornerRadius(Dp(8));
-        bg.SetStroke(Dp(2), AndroidColor.ParseColor(focused ? "#2BE0FF" : "#1E7FA0"));
+        bg.SetStroke(Dp(2), AndroidColor.ParseColor(focused ? "#00B8D4" : "#B0BEC5"));
         b.Background = bg;
-        b.SetTextColor(AndroidColor.ParseColor(focused ? "#EAFDFF" : "#9FD8EA"));
+        b.SetTextColor(AndroidColor.ParseColor(focused ? "#003B4A" : "#37474F"));
     }
 }

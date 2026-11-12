@@ -6,7 +6,7 @@ using AndroidColor = Android.Graphics.Color;
 namespace Un0Tv;
 
 // The small command panel the remote's Left key opens over a movie: Home,
-// Beginning, Play, Pause, Backward, Forward. A Next button joins them for a
+// Beginning, Back 10s, Play/Pause, Forward 10s. A Next button joins them for a
 // TV episode at 90% watched.
 //
 // The buttons are real Android views, so the D-pad always reaches them - the
@@ -111,17 +111,19 @@ internal static class MediaPanel
         bar.Focusable = true;
         bar.FocusableInTouchMode = true;
 
+        // The bar is white at 30% opacity (4D out of FF), so it rests lightly
+        // over the movie instead of hiding it. The dark buttons on top keep
+        // their contrast and stay easy to read on a light bar.
         var bg = new Android.Graphics.Drawables.GradientDrawable();
-        bg.SetColor(AndroidColor.ParseColor("#EE07121F"));
+        bg.SetColor(AndroidColor.ParseColor("#4DFFFFFF"));
         bg.SetCornerRadius(Dp(20));
-        bg.SetStroke(Dp(2), AndroidColor.ParseColor("#2BE0FF"));
+        bg.SetStroke(Dp(1), AndroidColor.ParseColor("#80FFFFFF"));
         bar.Background = bg;
 
         var home = Key(activity, "Home");
         var beginning = Key(activity, "Beginning");
-        var play = Key(activity, "Play");
-        var pause = Key(activity, "Pause");
         var backward = Key(activity, "<< Back 10s");
+        var playPause = Key(activity, "Play/Pause");
         var forward = Key(activity, "Forward 10s >>");
         var next = Key(activity, "Next");
         next.Visibility = ViewStates.Gone;
@@ -142,15 +144,11 @@ internal static class MediaPanel
             Arm();
         };
 
-        play.Click += (_, _) =>
+        // One button for both: it plays a paused movie and pauses a running
+        // one, so the bar keeps a single clear spot in the middle.
+        playPause.Click += (_, _) =>
         {
-            TvWebView.PlayerCommand("play");
-            Arm();
-        };
-
-        pause.Click += (_, _) =>
-        {
-            TvWebView.PlayerCommand("pause");
+            TvWebView.PlayerCommand("toggle");
             Arm();
         };
 
@@ -175,9 +173,8 @@ internal static class MediaPanel
 
         bar.AddView(home);
         bar.AddView(beginning);
-        bar.AddView(play);
-        bar.AddView(pause);
         bar.AddView(backward);
+        bar.AddView(playPause);
         bar.AddView(forward);
         bar.AddView(next);
         _first = home;
@@ -220,11 +217,14 @@ internal static class MediaPanel
 
     private static void Style(TextView b, bool focused)
     {
+        // The bar behind is white and see-through, so the buttons are dark and
+        // slightly see-through too: they keep their contrast over a bright
+        // movie and let the frosted bar show through, like glass.
         var bg = new Android.Graphics.Drawables.GradientDrawable();
-        bg.SetColor(AndroidColor.ParseColor(focused ? "#123C5A" : "#0B1A2B"));
+        bg.SetColor(AndroidColor.ParseColor(focused ? "#D9143C5A" : "#CC0B1A2B"));
         bg.SetCornerRadius(Dp(14));
-        bg.SetStroke(Dp(2), AndroidColor.ParseColor(focused ? "#2BE0FF" : "#1E7FA0"));
+        bg.SetStroke(Dp(2), AndroidColor.ParseColor(focused ? "#2BE0FF" : "#661E7FA0"));
         b.Background = bg;
-        b.SetTextColor(AndroidColor.ParseColor(focused ? "#EAFDFF" : "#9FD8EA"));
+        b.SetTextColor(AndroidColor.ParseColor(focused ? "#EAFDFF" : "#B8E4F2"));
     }
 }

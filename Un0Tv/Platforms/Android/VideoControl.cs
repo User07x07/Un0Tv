@@ -78,6 +78,7 @@ internal static class VideoControl
       else if (cmd === 'beginning') v.currentTime = 0;
       else if (cmd === 'seek' && typeof at === 'number') v.currentTime = Math.max(0, at);
       else if (cmd === 'mute') v.muted = !v.muted;
+      else if (cmd === 'silence') { v.muted = true; v.pause(); }
     } catch (e) { }
     say();
   }

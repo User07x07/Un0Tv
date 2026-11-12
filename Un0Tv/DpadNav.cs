@@ -74,6 +74,33 @@ public static class DpadNav
     return best;
   }
 
+  // The trash button beside a Continue Watching card is only for clearing
+  // that item. It is not a destination, so the focus ring must skip it and
+  // stay on the card beside it.
+  function isTrashControl(el) {
+    try {
+      var tag = (el.tagName || '').toLowerCase();
+      var role = (el.getAttribute('role') || '').toLowerCase();
+      if (tag !== 'button' && role !== 'button') return false;
+
+      var cls = (el.className && el.className.toString) ? el.className.toString() : '';
+      var identity = [el.id || '', cls, el.getAttribute('title') || '',
+        el.getAttribute('aria-label') || '', el.getAttribute('data-testid') || '']
+        .join(' ').toLowerCase();
+      if (/(trash|delete|remove)/.test(identity)) return true;
+
+      // Icon-only buttons may have no useful label. Lucide names its trash
+      // glyph on the SVG, so that still identifies the button safely.
+      var svg = el.querySelector('svg');
+      if (!svg) return false;
+      var svgIdentity = [svg.id || '',
+        (svg.className && svg.className.toString) ? svg.className.toString() : '',
+        svg.getAttribute('aria-label') || '', svg.getAttribute('data-lucide') || '',
+        svg.getAttribute('data-icon') || ''].join(' ').toLowerCase();
+      return /(trash|delete)/.test(svgIdentity);
+    } catch (e) { return false; }
+  }
+
   // Specific navigation elements the cursor should land on.
   // Home, Movies, TV Shows, Browse All, Continue Watching, and movie cards.
   //
@@ -84,6 +111,9 @@ public static class DpadNav
   function isNavTarget(el) {
     if (!el) return false;
     var tag = (el.tagName || '').toLowerCase();
+
+    // The Continue Watching delete button is a utility control, not a card.
+    if (isTrashControl(el)) return false;
 
     // Never a navigation target: boxes the viewer types into and plain
     // interactive controls.
@@ -107,15 +137,14 @@ public static class DpadNav
             || (el.parentElement && /(categor|chip|filter|genre)/i.test(
                  (el.parentElement.className && el.parentElement.className.toString) || '')))) return true;
 
-    // The numbered page buttons under a list ("1 2 ... 500"), so the ring can
-    // walk to them like any other item. The sign-in page's "HOW IT WORKS"
-    // steps are numbered circles too, but they are not choices, so those
-    // round step badges are left out (see isStepBadge).
+    // Numbered page buttons ("1 2 ... 500") are choices. A number printed
+    // inside a card is not: this keeps the release-card rank ("1") from
+    // taking the ring away from the poster beside it.
     if (/^\d{1,4}$/.test(text)
         && (tag === 'button' || tag === 'li' || tag === 'a'
             || (el.getAttribute('role') || '') === 'button'
             || (cls && CLASS_HINT.test(cls)))) {
-      if (isStepBadge(el)) return false;
+      if (isStepBadge(el) || numberInsideCard(el)) return false;
       return true;
     }
 
@@ -159,6 +188,27 @@ public static class DpadNav
         && cls && /(card|poster|tile|pf-card|pf-channel)/i.test(cls)
         && (el.querySelector('img') || hasBackgroundImage(el))) return true;
 
+    return false;
+  }
+
+  // A number that belongs to a card is decoration, not a separate choice.
+  // Start at the parent so a real numbered button stays selectable. A card
+  // class is enough; a plain button needs a poster image or background.
+  function numberInsideCard(el) {
+    try {
+      var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!/^(?:#|nr\.?|no\.?)?\s*\d{1,4}$/i.test(text)) return false;
+      var p = el.parentElement;
+      for (var i = 0; i < 5 && p; i++, p = p.parentElement) {
+        var c = ((p.className && p.className.toString) ? p.className.toString() : '')
+              + ' ' + (p.id || '');
+        if (/(card|poster|tile|release-card)/i.test(c)) return true;
+        var tag = (p.tagName || '').toLowerCase();
+        var role = (p.getAttribute('role') || '').toLowerCase();
+        if ((tag === 'button' || role === 'button')
+            && (p.querySelector('img') || hasBackgroundImage(p))) return true;
+      }
+    } catch (e) { }
     return false;
   }
 
@@ -263,6 +313,9 @@ public static class DpadNav
   // Restricted to the navigation targets above: top nav, the category chips,
   // movie cards, the search box and the profile.
   function clickable(el) {
+    // A rank printed on a release card is part of the poster, not a second
+    // choice. Exclude it before checking how the site marks clickable boxes.
+    if (numberInsideCard(el)) return false;
     // Only allow navigation targets
     if (!isNavTarget(el)) return false;
     

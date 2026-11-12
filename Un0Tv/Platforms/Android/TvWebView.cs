@@ -57,6 +57,16 @@ internal static class TvWebView
         settings.SetSupportMultipleWindows(true);
         settings.JavaScriptCanOpenWindowsAutomatically = true;
 
+        // Browser caching is enabled by default. The WebView will cache resources
+        // automatically, and our native ImageCacheManager provides an additional
+        // caching layer for images from whitelisted hosts.
+
+        // Enable image loading and caching
+        settings.LoadsImagesAutomatically = true;
+
+        // Enable database storage for website persistence
+        settings.DatabaseEnabled = true;
+
         // No white paper background behind the page: while the site paints or
         // swaps pages, a white view would flash through the gaps. Black matches
         // the app, so nothing bright ever shows behind it.
@@ -147,6 +157,15 @@ internal static class TvWebView
             AndroidX.WebKit.WebViewCompat.AddDocumentStartJavaScript(
                 view,
                 VideoControl.Js,
+                new[] { "*" });
+
+            // The player's own navigation bar: white at 30% opacity, with the
+            // controls in the order Home, Beginning, Back 10s, Play/Pause,
+            // Forward 10s. It runs in EVERY frame, because the player draws
+            // its bar inside its own frame.
+            AndroidX.WebKit.WebViewCompat.AddDocumentStartJavaScript(
+                view,
+                PlayerNavbarStyling.Js,
                 new[] { "*" });
 
             // D-pad navigation: the site has no TV navigation of its own, so

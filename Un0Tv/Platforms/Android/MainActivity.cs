@@ -286,6 +286,11 @@ public class MainActivity : MauiAppCompatActivity
             WindowManagerFlags.Fullscreen | WindowManagerFlags.KeepScreenOn,
             WindowManagerFlags.Fullscreen | WindowManagerFlags.KeepScreenOn);
 
+        // Catch every fatal crash and write the stack trace to crash.log in
+        // the app's files folder, so the real cause can be read even when the
+        // TV is not connected over USB.
+        CrashLog.Install();
+
         base.OnCreate(savedInstanceState);
         Current = this;
 

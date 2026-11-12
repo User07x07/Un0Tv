@@ -1,0 +1,56 @@
+<!-- INTEGRATION GUIDE: Add this to your index.html -->
+
+<!-- Service Worker Manager Script -->
+<script src="/sw-manager.js"></script>
+
+<!-- Optional: Display cache status (add to your HTML body) -->
+<div id="cache-status" style="position: fixed; bottom: 10px; right: 10px; 
+     background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; 
+     border-radius: 5px; font-size: 12px; z-index: 9999; display: none;">
+  <!-- Cache status will be displayed here dynamically -->
+</div>
+
+<!-- Optional: Cache Management UI -->
+<div id="cache-management" style="margin-top: 20px;">
+  <h3>Cache Management</h3>
+  <button onclick="showCacheStats()">Show Cache Stats</button>
+  <button onclick="clearCache()">Clear Cache</button>
+  <pre id="cache-stats" style="background: #f4f4f4; padding: 10px; display: none;"></pre>
+</div>
+
+<script>
+// Display cache status when it updates
+window.addEventListener('cacheStatusUpdated', (e) => {
+  const statusEl = document.getElementById('cache-status');
+  if (statusEl) {
+    statusEl.textContent = `📦 ${e.detail.totalItems} items cached (${e.detail.imageCount} images)`;
+    statusEl.style.display = 'block';
+  }
+});
+
+// Function to show cache statistics
+function showCacheStats() {
+  window.serviceWorkerManager.getStats()
+    .then(stats => {
+      const statsEl = document.getElementById('cache-stats');
+      if (statsEl) {
+        statsEl.textContent = JSON.stringify(stats, null, 2);
+        statsEl.style.display = 'block';
+      }
+    });
+}
+
+// Function to clear cache
+function clearCache() {
+  if (confirm('Clear all cached content?')) {
+    window.serviceWorkerManager.clearCache()
+      .then(() => alert('Cache cleared successfully'));
+  }
+}
+
+// Monitor connection speed changes
+window.addEventListener('connectionTypeChanged', (e) => {
+  console.log('Connection changed to:', e.detail.effectiveType);
+  // Could adjust loading strategy based on connection type
+});
+</script>

@@ -5,7 +5,7 @@ namespace Un0Tv;
 
 public partial class MainPage : ContentPage
 {
-    internal const string SiteUrl = "https://secondframe.netlify.app/";
+    internal const string SiteUrl = "https://movince-f5159.web.app";
 
     // What the switches were set to last time. Kept on the TV so a viewer does
     // not have to set them again on every start.
@@ -49,6 +49,11 @@ public partial class MainPage : ContentPage
         InitializeComponent();
         Instance = this;
 
+        // The version printed on the home panel under the Start watching
+        // button, read from the app's own package info.
+        try { VersionLabel.Text = $"Version {Microsoft.Maui.ApplicationModel.AppInfo.VersionString}"; }
+        catch { }
+
         try
         {
             _filterOn = Preferences.Get(FilterPref, true);
@@ -66,9 +71,10 @@ public partial class MainPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        // The protection dashboard is dormant: the app goes straight to the
-        // site on launch instead of stopping on the Un0 Protection screen.
-        StartSite();
+        // The protection dashboard is the launch screen: the app stops on the
+        // Un0 Protection home panel first, and the site loads when Start is
+        // pressed (StartSite).
+        ShowHome();
     }
 
     protected override void OnDisappearing()
@@ -94,97 +100,20 @@ public partial class MainPage : ContentPage
     // The home screen
     // ---------------------------------------------------------------
 
-    // Shows the protection screen and loads the saved block list, so the filter
-    // is ready before the site asks for anything.
-    private async void ShowHome()
+    // Shows the home screen: the logo, the tagline, the tip, the Start watching
+    // button and the version. Every visit is a fresh start: Back from the site
+    // lands here again, so the site may load once more.
+    private void ShowHome()
     {
-        if (_siteStarted)
-            return;
-
-        // Always on: the DNS filter and Private DNS are switched on here, with
-        // no question asked of the viewer.
-        EnsureVpnRunning();
-        _dnsApplied = TryApplyPrivateDns(DnsPresets.Current.Host);
+        _siteStarted = false;
 
         ActivityPanel.IsVisible = false;
         DnsPanel.IsVisible = false;
         HomePanel.IsVisible = true;
-        ListProgress.IsVisible = false;
-        DrawLayers();
+
         PulseLogo();
-
         StartBeat();
-
-        bool loaded = false;
-        try
-        {
-            loaded = await Hagezi.LoadAsync();
-        }
-        catch { }
-
-        DrawLayers(loaded);
-        FocusFirst(BtnFilter);
-    }
-
-    // Draws the shield, the figures and the three layer rows from the real
-    // state of the app - nothing here is a decoration.
-    private void DrawLayers(bool? loadedOverride = null)
-    {
-        var listOn = loadedOverride ?? Hagezi.IsLoaded;
-
-        // ---- The shield ----
-        var protectedNow = _filterOn;
-
-        ShieldGlyph.Text = protectedNow ? "\u2713" : "\u2715";
-        ShieldGlyph.TextColor = Color.FromArgb(protectedNow ? "#34D399" : "#F87171");
-        ShieldRing.Stroke = Color.FromArgb(protectedNow ? "#2A6B4C" : "#6B2E32");
-        ShieldState.Text = protectedNow ? "Protected" : "Not protected";
-        ShieldState.TextColor = Color.FromArgb(protectedNow ? "#EDF2FC" : "#F87171");
-
-        var layersOn = (protectedNow ? 1 : 0) + (listOn ? 1 : 0) + 1;
-        _ = layersOn;
-
-        // ---- Layer 1: the filter ----
-        BtnFilter.Text = _filterOn ? "ON" : "OFF";
-        BtnFilter.BackgroundColor = Color.FromArgb(_filterOn ? "#34D399" : "#334155");
-        BtnFilter.TextColor = Color.FromArgb(_filterOn ? "#062115" : "#C7D2E4");
-        LayerFilterInfo.Text = _filterOn
-            ? "Every request checked before it loads"
-            : "Off - adverts and pop-ups will show";
-
-        // ---- Layer 2: the public list ----
-        if (listOn)
-        {
-            BtnList.Text = "Update";
-            BtnList.BackgroundColor = Color.FromArgb("#1A2540");
-            BtnList.TextColor = Color.FromArgb("#DCE7FA");
-
-            var when = Hagezi.SavedAt;
-            LayerListInfo.Text = when is null
-                ? $"{Hagezi.Count:N0} domains loaded"
-                : $"{Hagezi.Count:N0} domains \u00b7 saved {when.Value.LocalDateTime:dd MMM}";
-        }
-        else
-        {
-            BtnList.Text = "Get";
-            BtnList.BackgroundColor = Color.FromArgb("#7C5CF0");
-            BtnList.TextColor = Colors.White;
-            LayerListInfo.Text = "Not downloaded yet \u00b7 tap Get to fetch it";
-        }
-
-        // ---- Layer 3: Private DNS ----
-        BtnDns.Text = "Open";
-        BtnDns.BackgroundColor = Color.FromArgb("#1A2540");
-        BtnDns.TextColor = Color.FromArgb("#DCE7FA");
-        LayerDnsInfo.Text = _dnsApplied
-            ? $"On \u00b7 {DnsPresets.Current.Host}"
-            : "Off \u00b7 press Open to turn it on";
-
-        HomeHint.Text = _filterOn
-            ? "Arrows move, OK presses. Filtering is on."
-            : "Filtering is off. Open the first layer to block adverts.";
-
-        DrawActivityHeader();
+        FocusFirst(BtnStart);
     }
 
     private void DrawActivityHeader()
@@ -244,17 +173,23 @@ public partial class MainPage : ContentPage
         _logoPulsing = true;
         var pulse = new Animation(v =>
         {
+            // v runs 0.5 -> 0.95 -> 0.5 ... so the logo breathes: the cyan
+            // glow swells, the mark grows a touch, and it sways side to side.
             if (LogoFrame?.Shadow is not null)
                 LogoFrame.Shadow.Opacity = (float)v;
             if (LogoMark is not null)
+            {
                 LogoMark.Scale = 1 + (v - 0.5) * 0.08;
+                LogoMark.Rotation = (v - 0.5) * 6; // gentle sway, about 3 degrees
+            }
         }, 0.5, 0.95, Easing.SinInOut);
 
-        pulse.Commit(this, "LogoPulse", length: 1800, repeat: () =>
+        pulse.Commit(this, "LogoPulse", length: 1600, repeat: () =>
         {
             if (!HomePanel.IsVisible)
             {
                 _logoPulsing = false;
+                try { LogoMark.Rotation = 0; } catch { }
                 return false;
             }
             return true;
@@ -281,51 +216,8 @@ public partial class MainPage : ContentPage
     // The switches and the buttons
     // ---------------------------------------------------------------
 
-    // Layer 1. Turning it on with no list saved fetches the list first, so the
-    // shield never says "Protected" while the filter has nothing to match.
-    private async void OnFilterToggled(object? sender, EventArgs e)
-    {
-        if (_busy)
-            return;
-
-        _filterOn = !_filterOn;
-        try { Preferences.Set(FilterPref, _filterOn); } catch { }
-
-        DrawLayers();
-
-        if (_filterOn && !Hagezi.IsLoaded)
-            await FetchListAsync();
-    }
-
-    // Layer 2. Fetches the five HaGeZi lists (or refreshes them).
-    private async void OnListClicked(object? sender, EventArgs e)
-    {
-        if (_busy)
-            return;
-
-        await FetchListAsync();
-    }
-
-    private bool _busy;
-
     // True once the chosen Private DNS name is switched on.
     private bool _dnsApplied;
-
-    // The VPN filter is asked for once per run, not on every visit to the home screen.
-    private static bool _vpnAutoTried;
-
-    // Starts the whole-TV DNS filter if it is not running yet. Android may show
-    // its own one-time permission box; that box belongs to the system.
-    private static void EnsureVpnRunning()
-    {
-        if (DnsSettings.VpnRunning || _vpnAutoTried)
-            return;
-
-        _vpnAutoTried = true;
-#if ANDROID
-        MainActivity.Current?.StartVpnFlow();
-#endif
-    }
 
     // Switches the TV's Private DNS to the given name, with no question asked.
     // Android allows this only to apps granted the secure-settings permission;
@@ -352,47 +244,6 @@ public partial class MainPage : ContentPage
 #endif
     }
 
-    private async Task FetchListAsync()
-    {
-        _busy = true;
-        ListProgress.IsVisible = true;
-        ListProgress.Progress = 0;
-        BtnFilter.IsEnabled = false;
-        BtnList.IsEnabled = false;
-        BtnStart.IsEnabled = false;
-
-        try
-        {
-            var progress = new Progress<string>(m =>
-            {
-                LayerListInfo.Text = m;
-                ListProgress.Progress = Math.Min(0.9, ListProgress.Progress + 0.18);
-            });
-
-            var count = await Hagezi.DownloadAsync(progress);
-
-            ListProgress.Progress = 1;
-            _filterOn = true;
-            try { Preferences.Set(FilterPref, true); } catch { }
-            DrawLayers(true);
-            LayerListInfo.Text = $"{count:N0} domains ready";
-        }
-        catch (Exception ex)
-        {
-            ListProgress.Progress = 0;
-            LayerListInfo.Text = "Could not download. Tap Get to try again.";
-            HomeHint.Text = ex.Message;
-        }
-        finally
-        {
-            _busy = false;
-            ListProgress.IsVisible = false;
-            BtnFilter.IsEnabled = true;
-            BtnList.IsEnabled = true;
-            BtnStart.IsEnabled = true;
-        }
-    }
-
     // Layer 3. Turns Private DNS on for the chosen name with no question to the
     // viewer. Only if Android refuses the switch does it open the TV's network
     // page, so the viewer can flip it there in one press.
@@ -404,8 +255,7 @@ public partial class MainPage : ContentPage
         if (_dnsApplied)
         {
             DnsPresetInfo.Text = $"Private DNS is on: {host}";
-            DrawLayers();
-            return;
+                return;
         }
 
 #if ANDROID
@@ -420,21 +270,10 @@ public partial class MainPage : ContentPage
         DnsPresetInfo.Text = $"Android blocked the switch. In the page that opens, set Private DNS to {host}.";
     }
 
-    // Opens the presets screen from the Private DNS row on the home screen.
-    private void OnDnsPanelClicked(object? sender, EventArgs e)
-    {
-        HomePanel.IsVisible = false;
-        DnsPanel.IsVisible = true;
-        DrawPresets();
-        DrawVpn();
-        FocusFirst(BtnDnsBack);
-    }
-
     private void OnDnsBackClicked(object? sender, EventArgs e)
     {
         DnsPanel.IsVisible = false;
         ShowHome();
-        FocusFirst(BtnDns);
     }
 
     private readonly List<Button> _presetButtons = new();
@@ -586,11 +425,7 @@ public partial class MainPage : ContentPage
 
         if (HomePanel.IsVisible)
         {
-            // The home screen keeps just the one button. The Activity list is
-            // reached with Back, so a viewer has one obvious thing to press.
-            order.Add(BtnFilter);
-            order.Add(BtnList);
-            order.Add(BtnDns);
+            // The home screen keeps just the one button.
             order.Add(BtnStart);
         }
         else if (DnsPanel.IsVisible)
@@ -716,11 +551,16 @@ public partial class MainPage : ContentPage
             return true;
         }
 
+        // Back on the home screen leaves the app; it no longer opens the Activity list.
         if (HomePanel.IsVisible)
+            return false;
+
+        // The site is showing: Back returns to the home panel first, so the
+        // viewer lands on the protection screen instead of leaving the app.
+        if (_siteStarted)
         {
-            // Back is the way to the Activity list. It never exits the app from
-            // here, which is what used to leave a blank screen behind it.
-            ShowActivity();
+            ShowHome();
+            FocusFirst(BtnStart);
             return true;
         }
 
@@ -740,7 +580,7 @@ public partial class MainPage : ContentPage
 #if ANDROID
         if (Browser.Handler?.PlatformView is Android.Webkit.WebView native)
         {
-            native.EvaluateJavascript(js, null);
+            try { native.EvaluateJavascript(js, null); } catch { }
             return;
         }
 #endif
@@ -750,7 +590,7 @@ public partial class MainPage : ContentPage
     // Navigates the site to the dashboard page. Called by the panel's Back button.
     public void LoadDashboard()
     {
-        const string dashboardUrl = "https://secondframe.netlify.app/UN0/dashboard";
+        const string dashboardUrl = "https://movince-f5159.web.app/UN0/dashboard";
         Browser.Source = dashboardUrl;
         _history.Clear();
         _currentUrl = dashboardUrl;

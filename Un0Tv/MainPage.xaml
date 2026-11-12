@@ -229,16 +229,10 @@
 				<Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
 					<HorizontalStackLayout Grid.Column="0" Spacing="10" VerticalOptions="Center">
 						<Label Text="UN0TV"
-                           FontSize="18"
-                           FontAttributes="Bold"
-                           CharacterSpacing="3"
-                           TextColor="{StaticResource Ink}" />
-						<Label Text="PROTECTION"
-                           FontSize="11"
-                           FontAttributes="Bold"
-                           CharacterSpacing="2.4"
-                           TextColor="{StaticResource Accent}"
-                           VerticalOptions="Center" />
+						   FontSize="18"
+						   FontAttributes="Bold"
+						   CharacterSpacing="3"
+						   TextColor="{StaticResource Ink}" />
 					</HorizontalStackLayout>
 
 					<Label x:Name="HomeHint"
@@ -249,12 +243,13 @@
                        VerticalOptions="Center" />
 				</Grid>
 
-				<!-- The Un0 logo, centred above everything else, with the quote
+				<!-- The Un0 logo, centred above everything else, with the tagline
 				     that says what Un0 is. The logo sits in a card the same
 				     colour as the night-sky panels, with a soft cyan glow, and
-				     the glow breathes so the screen feels alive. -->
+				     the glow breathes and the mark sways so the screen feels
+				     alive (see PulseLogo in the code-behind). -->
 				<VerticalStackLayout Grid.Row="1"
-                                     Spacing="10"
+                                     Spacing="14"
                                      HorizontalOptions="Center">
 					<Border x:Name="LogoFrame"
                         Background="{StaticResource CardBrush}"
@@ -276,216 +271,57 @@
 					</Border>
 
 					<Label x:Name="LogoQuote"
-                       Text="&quot;A Un0 Official isn't just where you store things — it's where you keep what matters.&quot;"
-                       FontSize="17"
-                       FontAttributes="Italic"
-                       TextColor="{StaticResource InkDim}"
+                       Text="Your TV&#x2019;s gateway to global cinema"
+                       FontSize="24"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource Ink}"
                        HorizontalTextAlignment="Center"
                        MaximumWidthRequest="760" />
-				</VerticalStackLayout>
-			</Grid>
 
-			<!-- Body -->
-			<Grid Grid.Row="1" ColumnDefinitions="2*,3*" ColumnSpacing="34">
-
-				<!-- Left: the shield -->
-				<Border Grid.Column="0"
-                        Style="{StaticResource Card}"
-                        StrokeShape="RoundRectangle 18"
-                        Padding="26,22"
-                        VerticalOptions="Center"
-                        HorizontalOptions="Fill">
-
-					<VerticalStackLayout Spacing="12">
-						<Label Text="YOUR STATE" Style="{StaticResource Section}" />
-
-						<!-- The status badge. A ring that is green when everything
-						     is on, red when the filter is off. -->
-						<Border x:Name="ShieldRing"
-                                WidthRequest="108"
-                                HeightRequest="108"
-                                StrokeThickness="3"
-                                Stroke="#2C3651"
-                                HorizontalOptions="Center"
-                                Margin="0,4,0,2">
-							<Border.StrokeShape>
-								<RoundRectangle CornerRadius="54" />
-							</Border.StrokeShape>
-							<Border.Background>
-								<RadialGradientBrush Center="0.5,0.35"
-                                                     Radius="0.8">
-									<GradientStop Color="#1A2740" Offset="0.0" />
-									<GradientStop Color="#0B1322" Offset="1.0" />
-								</RadialGradientBrush>
-							</Border.Background>
-							<Label x:Name="ShieldGlyph"
-                                   Text="&#x2713;"
-                                   FontSize="46"
-                                   TextColor="{StaticResource Good}"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center" />
-						</Border>
-
-						<Label x:Name="ShieldState"
-                               Text="Protected"
-                               FontSize="26"
-                               FontAttributes="Bold"
-                               TextColor="{StaticResource Ink}"
-                               HorizontalTextAlignment="Center" />
-
-						<!-- What the viewer has to do before watching. -->
-						<Label Text="Activate Parameters Before Proceeding to Ensure Smooth Stream"
-                               FontSize="14"
+					<!-- The reminder every viewer should see before watching. -->
+					<Border Background="#12203A"
+                        Stroke="{StaticResource StrokeSoft}"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 12"
+                        Padding="16,12"
+                        MaximumWidthRequest="760"
+                        HorizontalOptions="Center">
+						<HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+							<Label Text="&#x26A0;"
+                               FontSize="15"
+                               TextColor="{StaticResource Accent}"
+                               VerticalOptions="Center" />
+							<Label Text="Peak Performance Tip: Un0 fetches and streams content directly across the web via real-time indices. For smooth, buffer-free playback, ensure your Android TV is connected to an un-congested network or high-speed bandwidth connection."
+                               FontSize="13"
                                TextColor="{StaticResource InkDim}"
                                LineBreakMode="WordWrap"
-                               MaximumWidthRequest="320"
-                               HorizontalTextAlignment="Center"
-                               HorizontalOptions="Center" />
-					</VerticalStackLayout>
-				</Border>
-
-				<!-- Right: the layers, what is left to watch, and the way in. -->
-				<VerticalStackLayout Grid.Column="1"
-                                     VerticalOptions="Center"
-                                     Spacing="12">
-
-					<Label Text="PROTECTION LAYERS" Style="{StaticResource Section}" />
-
-					<!-- Layer 1: the filter itself -->
-					<Border Style="{StaticResource Card}"
-                            StrokeShape="RoundRectangle 14"
-                            Padding="18,12">
-						<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
-							<Border Grid.Column="0"
-                                    BackgroundColor="#211E3A"
-                                    WidthRequest="44"
-                                    HeightRequest="44"
-                                    VerticalOptions="Center"
-                                    StrokeThickness="0"
-                                    StrokeShape="RoundRectangle 12">
-								<Label Text="A" Style="{StaticResource Glyph}" TextColor="{StaticResource Violet}" />
-							</Border>
-
-							<VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
-								<Label Text="Ad and tracker filter" Style="{StaticResource CardTitle}" />
-								<Label x:Name="LayerFilterInfo"
-                                       Text="Filtering with the built-in rules"
-                                       Style="{StaticResource CardLine}" />
-							</VerticalStackLayout>
-
-							<Button x:Name="BtnFilter"
-                                    Grid.Column="2"
-                                    Text="ON"
-                                    Clicked="OnFilterToggled"
-                                    FontSize="16"
-                                    FontAttributes="Bold"
-                                    Padding="0"
-                                    WidthRequest="104"
-                                    HeightRequest="44"
-                                    CornerRadius="12"
-                                    BorderWidth="0"
-                                    VerticalOptions="Center" />
-						</Grid>
+                               MaximumWidthRequest="640"
+                               VerticalOptions="Center" />
+						</HorizontalStackLayout>
 					</Border>
+                <Button x:Name="BtnStart"
+                        Text="Start watching"
+                        Clicked="OnStartClicked"
+                        Background="{StaticResource AccentBrush}"
+                        TextColor="#03121C"
+                        FontSize="17"
+                        FontAttributes="Bold"
+                        Padding="0"
+                        WidthRequest="230"
+                        HeightRequest="50"
+                        CornerRadius="12"
+                        BorderWidth="0"
+                        HorizontalOptions="Center"
+                        Margin="0,6,0,0" />
 
-					<!-- Layer 2: the big public block list -->
-					<Border Style="{StaticResource Card}"
-                            StrokeShape="RoundRectangle 14"
-                            Padding="18,12">
-						<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
-							<Border Grid.Column="0"
-                                    BackgroundColor="#132A22"
-                                    WidthRequest="44"
-                                    HeightRequest="44"
-                                    VerticalOptions="Center"
-                                    StrokeThickness="0"
-                                    StrokeShape="RoundRectangle 12">
-								<Label Text="H" Style="{StaticResource Glyph}" TextColor="{StaticResource Good}" />
-							</Border>
-
-							<VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
-								<Label Text="HaGeZi Multi PRO list" Style="{StaticResource CardTitle}" />
-								<Label x:Name="LayerListInfo"
-                                       Text="Not downloaded yet"
-                                       Style="{StaticResource CardLine}" />
-							</VerticalStackLayout>
-
-							<Button x:Name="BtnList"
-                                    Grid.Column="2"
-                                    Text="Get"
-                                    Clicked="OnListClicked"
-                                    FontSize="15"
-                                    FontAttributes="Bold"
-                                    Padding="0"
-                                    WidthRequest="104"
-                                    HeightRequest="44"
-                                    CornerRadius="12"
-                                    BorderWidth="0"
-                                    VerticalOptions="Center" />
-						</Grid>
-					</Border>
-
-					<!-- Layer 3: the TV's own Private DNS, which works even with
-					     the app closed. -->
-					<Border Style="{StaticResource Card}"
-                            StrokeShape="RoundRectangle 14"
-                            Padding="18,12">
-						<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
-							<Border Grid.Column="0"
-                                    BackgroundColor="#16223C"
-                                    WidthRequest="44"
-                                    HeightRequest="44"
-                                    VerticalOptions="Center"
-                                    StrokeThickness="0"
-                                    StrokeShape="RoundRectangle 12">
-								<Label Text="D" Style="{StaticResource Glyph}" TextColor="{StaticResource Accent}" />
-							</Border>
-
-							<VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
-								<Label Text="Private DNS" Style="{StaticResource CardTitle}" />
-								<Label x:Name="LayerDnsInfo"
-                                       Text="Checked on this TV"
-                                       Style="{StaticResource CardLine}" />
-							</VerticalStackLayout>
-
-							<Button x:Name="BtnDns"
-                                    Grid.Column="2"
-                                    Text="Open"
-                                    Clicked="OnDnsPanelClicked"
-                                    FontSize="15"
-                                    FontAttributes="Bold"
-                                    Padding="0"
-                                    WidthRequest="104"
-                                    HeightRequest="44"
-                                    CornerRadius="12"
-                                    BorderWidth="0"
-                                    VerticalOptions="Center" />
-						</Grid>
-					</Border>
-
-					<ProgressBar x:Name="ListProgress"
-                                 IsVisible="False"
-                                 ProgressColor="{StaticResource Accent}"
-                                 HeightRequest="4"
-                                 Margin="0,2" />
-
-					<!-- The thing a viewer actually came to do. -->
-					<Button x:Name="BtnStart"
-                            Text="Start watching"
-                            Clicked="OnStartClicked"
-                            Background="{StaticResource AccentBrush}"
-                            TextColor="#03121C"
-                            FontSize="17"
-                            FontAttributes="Bold"
-                            Padding="0"
-                            WidthRequest="230"
-                            HeightRequest="50"
-                            CornerRadius="12"
-                            BorderWidth="0"
-                            HorizontalOptions="Start"
-                            Margin="0,4,0,0" />
+                <Label x:Name="VersionLabel"
+                       Text=""
+                       FontSize="12"
+                       TextColor="{StaticResource InkFaint}"
+                       HorizontalOptions="Center" />
 				</VerticalStackLayout>
 			</Grid>
+
 		</Grid>
 
 		<!-- ============================================================
